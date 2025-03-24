@@ -1,4 +1,4 @@
-# Ampify_backend
+# Ampify_frontend
 
 Spotify Like App.
 
