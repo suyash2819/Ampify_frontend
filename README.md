@@ -39,6 +39,11 @@ Include Redis, Messaging Queue / Pub Sub, Load Balancer/API Gateway as needed
 
 <img width="968" height="464" alt="image" src="https://github.com/user-attachments/assets/6aa66ee6-f3ae-4c8f-b1ff-276b68c6dcf1" />
 
+<h2>UI/UX</h2>
+
+https://dribbble.com/shots/20018863-Music-Platform-Landing-Page-RkMusic
+
+<img width="1027" height="763" alt="image" src="https://github.com/user-attachments/assets/ae14bcc0-e56a-4ae1-8bb6-c43004913fdb" />
 
 
 # React + TypeScript + Vite
