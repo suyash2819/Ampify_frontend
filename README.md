@@ -25,7 +25,8 @@ availability - music should be available, availability > consistency here
 
 Include Redis, Messaging Queue / Pub Sub, Load Balancer/API Gateway as needed
 
-![image](https://github.com/user-attachments/assets/99390391-8a9a-42d9-bc92-67e2b1891603)
+<img width="1456" height="778" alt="image" src="https://github.com/user-attachments/assets/4b7b87d4-3e2d-4762-a20b-84b8f7050d78" />
+
 
 <h2>Apis</h2>
 
@@ -36,7 +37,8 @@ Include Redis, Messaging Queue / Pub Sub, Load Balancer/API Gateway as needed
 
 <h2>Tables</h2>
 
-![image](https://github.com/user-attachments/assets/1ed29a1b-4613-4f2f-b445-b7aa5f46abec)
+<img width="968" height="464" alt="image" src="https://github.com/user-attachments/assets/6aa66ee6-f3ae-4c8f-b1ff-276b68c6dcf1" />
+
 
 
 # React + TypeScript + Vite
