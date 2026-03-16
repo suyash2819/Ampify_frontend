@@ -1,0 +1,277 @@
+.hero-section {
+  background: linear-gradient(135deg, #f5dcc7 0%, #fce8d3 100%);
+  padding: 4rem 0;
+  min-height: 90vh;
+  display: flex;
+  align-items: center;
+}
+
+.min-vh-90 {
+  min-height: 90vh;
+}
+
+.hero-content {
+  z-index: 2;
+  padding: 2rem 0;
+}
+
+.hero-label {
+  color: #ff6b35;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+}
+
+.hero-title {
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #1a1a1a;
+  margin-bottom: 1.5rem;
+  font-family: Georgia, serif;
+}
+
+.hero-description {
+  font-size: 1rem;
+  color: #666;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+  max-width: 500px;
+}
+
+.hero-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 3rem;
+  flex-wrap: wrap;
+}
+
+.btn-primary-hero {
+  background-color: #ff6b35 !important;
+  border: none !important;
+  color: white !important;
+  padding: 0.85rem 2rem !important;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  border-radius: 0.35rem !important;
+  cursor: pointer;
+  transition: all 0.3s ease !important;
+}
+
+.btn-primary-hero:hover {
+  background-color: #e55a2b !important;
+  transform: translateY(-2px);
+}
+
+.btn-secondary-hero {
+  background-color: white !important;
+  color: #1a1a1a !important;
+  border: 2px solid #ddd !important;
+  padding: 0.85rem 2rem !important;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  border-radius: 0.35rem !important;
+  cursor: pointer;
+  transition: all 0.3s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem;
+}
+
+.btn-secondary-hero:hover {
+  border-color: #ff6b35 !important;
+  transform: translateY(-2px);
+}
+
+.hero-cards-container {
+  position: relative;
+  height: 500px;
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card {
+  position: absolute;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-10px);
+}
+
+.card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.card-main {
+  width: 280px;
+  height: 380px;
+  top: 40px;
+  left: 0;
+  z-index: 3;
+}
+
+.card-clash {
+  width: 220px;
+  height: 300px;
+  top: 120px;
+  right: 150px;
+  z-index: 4;
+}
+
+.card-side {
+  width: 200px;
+  height: 320px;
+  top: 0;
+  right: 0;
+  z-index: 2;
+}
+
+.card-label {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  color: white;
+  font-weight: 700;
+  font-size: 1.3rem;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.card-artist {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  color: white;
+  font-weight: 700;
+  font-size: 1.5rem;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.hero-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 2px solid rgba(0, 0, 0, 0.1);
+}
+
+.stats-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.stats-text {
+  color: #1a1a1a;
+  font-weight: 600;
+  font-size: 0.95rem;
+  max-width: 300px;
+  margin: 0;
+}
+
+.stats-right {
+  display: flex !important;
+  gap: 3rem;
+  justify-content: flex-end;
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #ff6b35;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: #999;
+  margin-top: 0.25rem;
+  text-transform: capitalize;
+}
+
+@media (max-width: 1024px) {
+  .hero-cards-container {
+    height: 400px;
+  }
+
+  .card-main {
+    width: 220px;
+    height: 300px;
+  }
+
+  .card-clash {
+    width: 180px;
+    height: 250px;
+  }
+
+  .hero-title {
+    font-size: 2.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .hero-section {
+    padding: 2rem 0;
+  }
+
+  .hero-title {
+    font-size: 2rem;
+  }
+
+  .hero-buttons {
+    flex-direction: column;
+  }
+
+  .btn-primary-hero,
+  .btn-secondary-hero {
+    width: 100%;
+  }
+
+  .hero-stats {
+    flex-direction: column;
+    gap: 1.5rem;
+    padding-top: 1.5rem;
+  }
+
+  .stats-right {
+    justify-content: space-around !important;
+    width: 100%;
+  }
+
+  .card-main {
+    width: 200px;
+    height: 270px;
+    left: 20px;
+  }
+
+  .card-clash {
+    width: 160px;
+    height: 220px;
+    right: 80px;
+  }
+
+  .card-side {
+    width: 140px;
+    height: 240px;
+    right: 10px;
+  }
+
+  .hero-cards-container {
+    height: 350px;
+  }
+}

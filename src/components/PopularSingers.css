@@ -1,0 +1,152 @@
+.popular-singers {
+  padding: 5rem 0;
+  background-color: #fafafa;
+  min-height: auto;
+}
+
+.singers-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  text-align: center;
+  margin-bottom: 3.5rem;
+  font-family: Georgia, serif;
+}
+
+.singers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2.5rem;
+}
+
+.singer-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.singer-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.singer-image {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 1;
+  background-color: #f0f0f0;
+}
+
+.singer-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+  display: block;
+}
+
+.singer-card:hover .singer-image img {
+  transform: scale(1.05);
+}
+
+.singer-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.singer-card:hover .singer-overlay {
+  opacity: 1;
+}
+
+.play-btn {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: #ff6b35;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
+}
+
+.play-btn:hover {
+  background-color: #e55a2b;
+  transform: scale(1.1);
+}
+
+.singer-info {
+  padding: 1.5rem;
+}
+
+.singer-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 0.35rem;
+}
+
+.singer-genre {
+  font-size: 0.85rem;
+  color: #999;
+  margin-bottom: 0.75rem;
+}
+
+.singer-rating {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.stars {
+  color: #ff6b35;
+  font-size: 0.9rem;
+}
+
+.rating-value {
+  color: #666;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .singers-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .singers-title {
+    font-size: 2rem;
+  }
+
+  .popular-singers {
+    padding: 3rem 0;
+  }
+}
+
+@media (max-width: 576px) {
+  .singers-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .singers-title {
+    font-size: 1.75rem;
+    margin-bottom: 2rem;
+  }
+}
