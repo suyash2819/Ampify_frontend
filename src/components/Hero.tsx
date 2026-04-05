@@ -26,17 +26,17 @@ export default function Hero() {
 
           <Col lg={6} className="hero-cards-container">
             <div className="card card-main">
-              <img src="/images/selena-gomez.webp" alt="Selena Gomez" />
+              <img src="https://storage.googleapis.com/ampify-assets/images/selena-gomez.webp" alt="Selena Gomez" />
               <div className="card-label">SELENA GOMEZ</div>
             </div>
 
             <div className="card card-clash">
-              <img src="/images/weekend.webp" alt="WEEKEND" />
+              <img src="https://storage.googleapis.com/ampify-assets/images/weekend.webp" alt="WEEKEND" />
               <div className="card-label">WEEKEND</div>
             </div>
 
             <div className="card card-side">
-              <img src="/images/general1.jpg" alt="Artist" />
+              <img src="https://storage.googleapis.com/ampify-assets/images/general1.jpg" alt="Artist" />
             </div>
           </Col>
         </Row>
