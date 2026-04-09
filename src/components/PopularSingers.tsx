@@ -15,28 +15,29 @@ const singers: Singer[] = [
     name: "Selena Gomez",
     genre: "Pop/R&B",
     rating: 4.8,
-    image: "/images/selena-gomez.webp",
+    image:
+      "https://storage.googleapis.com/ampify-assets/images/selena-gomez.webp",
   },
   {
     id: 2,
     name: "Zayn Malik",
     genre: "Pop R&B",
     rating: 4.7,
-    image: "/images/weekend.webp",
+    image: "https://storage.googleapis.com/ampify-assets/images/weekend.webp",
   },
   {
     id: 3,
     name: "Camila Cabello",
     genre: "Pop Singer",
     rating: 4.7,
-    image: "/images/artist-3.jpg",
+    image: "https://storage.googleapis.com/ampify-assets/images/artist-3.jpg",
   },
   {
     id: 4,
     name: "Harry Styles",
     genre: "Soft Rock",
     rating: 4.6,
-    image: "/images/artist-4.jpg",
+    image: "https://storage.googleapis.com/ampify-assets/images/artist-4.jpg",
   },
 ];
 

@@ -7,9 +7,13 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "vite",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
   },
   "dependencies": {
+    "@google-cloud/storage": "^7.19.0",
     "bootstrap": "^5.3.8",
     "lucide-react": "^0.577.0",
     "react": "^19.0.0",
