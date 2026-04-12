@@ -1,7 +1,10 @@
 import { Container, Row, Col, Button } from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
 import "./Hero.css";
 
 export default function Hero() {
+  const navigate = useNavigate();
+
   return (
     <section className="hero-section">
       <Container>
@@ -17,7 +20,12 @@ export default function Hero() {
             </p>
 
             <div className="hero-buttons">
-              <Button className="btn-primary-hero">Get Started</Button>
+              <Button
+                className="btn-primary-hero"
+                onClick={() => navigate("/signup")}
+              >
+                Get Started
+              </Button>
               <Button className="btn-secondary-hero">
                 <span>📱</span> Download for iOS
               </Button>
@@ -26,17 +34,26 @@ export default function Hero() {
 
           <Col lg={6} className="hero-cards-container">
             <div className="card card-main">
-              <img src="https://storage.googleapis.com/ampify-assets/images/selena-gomez.webp" alt="Selena Gomez" />
+              <img
+                src="https://storage.googleapis.com/ampify-assets/images/selena-gomez.webp"
+                alt="Selena Gomez"
+              />
               <div className="card-label">SELENA GOMEZ</div>
             </div>
 
             <div className="card card-clash">
-              <img src="https://storage.googleapis.com/ampify-assets/images/weekend.webp" alt="WEEKEND" />
+              <img
+                src="https://storage.googleapis.com/ampify-assets/images/weekend.webp"
+                alt="WEEKEND"
+              />
               <div className="card-label">WEEKEND</div>
             </div>
 
             <div className="card card-side">
-              <img src="https://storage.googleapis.com/ampify-assets/images/general1.jpg" alt="Artist" />
+              <img
+                src="https://storage.googleapis.com/ampify-assets/images/general1.jpg"
+                alt="Artist"
+              />
             </div>
           </Col>
         </Row>
