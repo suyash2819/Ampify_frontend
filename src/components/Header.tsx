@@ -1,12 +1,26 @@
 import { Navbar, Nav, Container, Button } from "react-bootstrap";
 import { Search } from "lucide-react";
 import "./Header.css";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export default function Header() {
+  const navigate = useNavigate();
+  const { isAuthenticated, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
+
   return (
     <Navbar expand="lg" className="navbar-custom" sticky="top">
       <Container>
-        <Navbar.Brand href="#" className="brand-logo">
+        <Navbar.Brand
+          href="#"
+          className="brand-logo"
+          onClick={() => navigate("/")}
+        >
           Ampify
         </Navbar.Brand>
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
@@ -22,7 +36,26 @@ export default function Header() {
             <button className="search-btn">
               <Search size={20} />
             </button>
-            <Button className="btn-signup">Sign Up</Button>
+            {isAuthenticated ? (
+              <Button className="btn-signup" onClick={handleLogout}>
+                Logout
+              </Button>
+            ) : (
+              <>
+                <Button
+                  className="btn-signup"
+                  onClick={() => navigate("/signup")}
+                >
+                  Sign Up
+                </Button>
+                <Button
+                  className="btn-signup"
+                  onClick={() => navigate("/signin")}
+                >
+                  Sign In
+                </Button>
+              </>
+            )}
           </div>
         </Navbar.Collapse>
       </Container>
