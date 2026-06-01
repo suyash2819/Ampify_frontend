@@ -79,7 +79,17 @@ const Signin = () => {
       const response = await signinUser(formData);
 
       if (response.access_token) {
-        login(response.access_token);
+        // Get user data from localStorage or create a minimal user object
+        const storedUser = localStorage.getItem("user");
+        const userData = storedUser
+          ? JSON.parse(storedUser)
+          : {
+              id: "", // Will be populated from user profile endpoint in future
+              name: formData.email.split("@")[0],
+              email: formData.email,
+            };
+
+        login(response.access_token, userData);
         setSuccessMessage("Signin successful! Redirecting...");
         setFormData({ email: "", password: "" });
 

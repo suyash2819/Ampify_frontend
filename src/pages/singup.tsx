@@ -84,15 +84,24 @@ const Signup = () => {
       const response = await signupUser(formData);
 
       if (response.id) {
+        // Store user info in localStorage for the preferences page
+        const userData = {
+          id: response.id,
+          name: response.name,
+          email: response.email,
+        };
+        localStorage.setItem("user", JSON.stringify(userData));
+        localStorage.setItem("authToken", response.access_token);
+
         setSuccessMessage(
-          "User registered successfully! Redirecting to signin...",
+          "User registered successfully! Setting up preferences...",
         );
         setFormData({ name: "", email: "", password: "" });
 
-        // Redirect to signin page after 3 seconds
+        // Redirect to preferences page after 1.5 seconds
         setTimeout(() => {
-          window.location.href = "/signin";
-        }, 3000);
+          window.location.href = "/preferences";
+        }, 1500);
       }
     } catch (error) {
       const errorMessage =
