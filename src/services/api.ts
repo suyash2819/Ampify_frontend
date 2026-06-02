@@ -19,12 +19,48 @@ interface SignupResponse {
   email: string;
   created_at: string;
   updated_at: string;
+  access_token: string;
 }
 
 interface SigninResponse {
   access_token: string;
   token_type: string;
 }
+
+interface Genre {
+  id: string;
+  name: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface Artist {
+  id: string;
+  name: string;
+  image_url?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface PreferencePayload {
+  user_id: string;
+  genre_id?: string | null;
+  artist_id?: string | null;
+}
+
+interface PreferenceResponse {
+  id: string;
+  user_id: string;
+  genre_id?: string | null;
+  artist_id?: string | null;
+  created_at: string;
+}
+
+// interface PreferencesSaveResponse {
+//   message: string;
+//   count: number;
+//   preferences: PreferenceResponse[];
+// }
 
 /**
  * Call the signup API endpoint
@@ -81,6 +117,97 @@ export const signinUser = async (
 
     return data;
   } catch (error) {
+    throw error instanceof Error ? error : new Error("An error occurred");
+  }
+};
+
+/**
+ * Fetch all available genres
+ */
+export const getGenres = async (): Promise<Genre[]> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/genres/`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    const data = await response.json();
+    console.log("Genres API Response:", data);
+
+    if (!response.ok) {
+      throw new Error(data.message || data.detail || "Failed to fetch genres");
+    }
+
+    const result = Array.isArray(data) ? data : data.genres || [];
+    console.log("Genres parsed result:", result);
+    return result;
+  } catch (error) {
+    console.error("Error fetching genres:", error);
+    throw error instanceof Error ? error : new Error("An error occurred");
+  }
+};
+
+/**
+ * Fetch all available artists
+ */
+export const getArtists = async (): Promise<Artist[]> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/artists/`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    const data = await response.json();
+    console.log("Artists API Response:", data);
+
+    if (!response.ok) {
+      throw new Error(data.message || data.detail || "Failed to fetch artists");
+    }
+
+    const result = Array.isArray(data) ? data : data.artists || [];
+    console.log("Artists parsed result:", result);
+    return result;
+  } catch (error) {
+    console.error("Error fetching artists:", error);
+    throw error instanceof Error ? error : new Error("An error occurred");
+  }
+};
+
+/**
+ * Save user preferences (genres and/or artists)
+ */
+export const saveUserPreferences = async (
+  preferences: PreferencePayload[],
+): Promise<PreferenceResponse[]> => {
+  try {
+    const authToken = localStorage.getItem("authToken");
+    const response = await fetch(`${API_BASE_URL}/preferences/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({ preferences }),
+    });
+
+    const data = await response.json();
+    console.log("Save Preferences API Response:", data);
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || data.detail || "Failed to save preferences",
+      );
+    }
+
+    const result = data.preferences || [];
+    console.log("Preferences saved:", result);
+    return result;
+  } catch (error) {
+    console.error("Error saving preferences:", error);
     throw error instanceof Error ? error : new Error("An error occurred");
   }
 };
