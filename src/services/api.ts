@@ -211,3 +211,92 @@ export const saveUserPreferences = async (
     throw error instanceof Error ? error : new Error("An error occurred");
   }
 };
+
+/**
+ * Stream a song and return a blob URL that can be used as an audio source
+ */
+export const streamSongToBlobUrl = async (songId: string): Promise<string> => {
+  try {
+    const authToken = localStorage.getItem("authToken");
+    const response = await fetch(`${API_BASE_URL}/songs/${songId}/stream`, {
+      method: "GET",
+      headers: authToken
+        ? {
+            Authorization: `Bearer ${authToken}`,
+          }
+        : {},
+    });
+
+    if (!response.ok) {
+      let errText = "Failed to stream song";
+      try {
+        const json = await response.json();
+        errText = json.message || json.detail || errText;
+      } catch (error) {
+        // ignore
+        console.error("Error streaming song:", error);
+      }
+      throw new Error(errText);
+    }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    return url;
+  } catch (error) {
+    console.error("Error streaming song:", error);
+    throw error instanceof Error ? error : new Error("An error occurred");
+  }
+};
+
+/**
+ * Fetch a byte range for a song. Returns the ArrayBuffer and response headers.
+ */
+export const fetchSongRange = async (
+  songId: string,
+  start?: number,
+  end?: number,
+): Promise<{
+  data: ArrayBuffer;
+  contentRange?: string | null;
+  contentLength?: string | null;
+  acceptRanges?: string | null;
+}> => {
+  try {
+    const authToken = localStorage.getItem("authToken");
+
+    const headers: Record<string, string> = {};
+    if (authToken) headers.Authorization = `Bearer ${authToken}`;
+    if (typeof start === "number") {
+      const rangeHeader = `bytes=${start}-${typeof end === "number" ? end : ""}`;
+      headers.Range = rangeHeader;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/songs/${songId}/stream`, {
+      method: "GET",
+      headers,
+    });
+
+    if (!response.ok && response.status !== 206 && response.status !== 200) {
+      let errText = "Failed to fetch song range";
+      try {
+        const json = await response.json();
+        errText = json.message || json.detail || errText;
+      } catch (error) {
+        console.error("Error streaming song:", error);
+      }
+      throw new Error(errText);
+    }
+
+    const data = await response.arrayBuffer();
+
+    return {
+      data,
+      contentRange: response.headers.get("Content-Range"),
+      contentLength: response.headers.get("Content-Length"),
+      acceptRanges: response.headers.get("Accept-Ranges"),
+    };
+  } catch (error) {
+    console.error("Error fetching song range:", error);
+    throw error instanceof Error ? error : new Error("An error occurred");
+  }
+};

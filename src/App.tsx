@@ -6,6 +6,7 @@ import PopularSingers from "./components/PopularSingers";
 import Signup from "./pages/singup";
 import Signin from "./pages/signin";
 import Preferences from "./pages/preferences";
+import Features from "./pages/features";
 import { AuthProvider } from "./context/AuthContext";
 import "./App.css";
 
@@ -28,6 +29,7 @@ function App() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/signin" element={<Signin />} />
           <Route path="/preferences" element={<Preferences />} />
+          <Route path="/features" element={<Features />} />
         </Routes>
       </Router>
     </AuthProvider>

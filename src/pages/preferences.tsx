@@ -139,6 +139,7 @@ const Preferences = () => {
         navigate("/");
       }, 2000);
     } catch (err) {
+      console.error("Save preferences error:", err);
       setError(
         err instanceof Error
           ? err.message
