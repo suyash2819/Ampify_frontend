@@ -56,6 +56,24 @@ interface PreferenceResponse {
   created_at: string;
 }
 
+export interface Song {
+  id: string;
+  title: string;
+  artist: string;
+  album?: string;
+  duration?: string;
+  image_url: string;
+  song_url: string;
+}
+
+export interface Playlist {
+  id: string;
+  name: string;
+  description?: string;
+  songs: Song[];
+  image_url?: string;
+}
+
 // interface PreferencesSaveResponse {
 //   message: string;
 //   count: number;
@@ -69,7 +87,7 @@ export const signupUser = async (
   payload: SignupPayload,
 ): Promise<SignupResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/user/signup`, {
+    const response = await fetch(`${API_BASE_URL}/v1/user/signup`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -81,6 +99,10 @@ export const signupUser = async (
 
     if (!response.ok) {
       throw new Error(data.message || data.detail || "Signup failed");
+    }
+
+    if (data.access_token) {
+      localStorage.setItem("authToken", data.access_token);
     }
 
     return data;
@@ -96,7 +118,7 @@ export const signinUser = async (
   payload: SigninPayload,
 ): Promise<SigninResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/user/signin`, {
+    const response = await fetch(`${API_BASE_URL}/v1/user/signin`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -126,7 +148,7 @@ export const signinUser = async (
  */
 export const getGenres = async (): Promise<Genre[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/genres/`, {
+    const response = await fetch(`${API_BASE_URL}/v1/genres/`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -154,7 +176,7 @@ export const getGenres = async (): Promise<Genre[]> => {
  */
 export const getArtists = async (): Promise<Artist[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/artists/`, {
+    const response = await fetch(`${API_BASE_URL}/v1/artists/`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -185,7 +207,7 @@ export const saveUserPreferences = async (
 ): Promise<PreferenceResponse[]> => {
   try {
     const authToken = localStorage.getItem("authToken");
-    const response = await fetch(`${API_BASE_URL}/preferences/`, {
+    const response = await fetch(`${API_BASE_URL}/v1/preferences/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -211,3 +233,270 @@ export const saveUserPreferences = async (
     throw error instanceof Error ? error : new Error("An error occurred");
   }
 };
+
+/**
+ * Fetch user playlists from the backend
+ */
+export const getUserPlaylists = async (): Promise<Playlist[]> => {
+  try {
+    const authToken = localStorage.getItem("authToken");
+    const response = await fetch(`${API_BASE_URL}/v1/playlists`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (response.status === 401) {
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("user");
+      window.location.href = "/signin";
+      throw new Error("Session expired. Please sign in again.");
+    }
+
+    if (!response.ok) {
+      throw new Error(data.message || data.detail || "Failed to fetch playlists");
+    }
+
+    return Array.isArray(data) ? data : data.playlists || [];
+  } catch (error) {
+    console.error("Error fetching playlists:", error);
+    throw error instanceof Error ? error : new Error("An error occurred");
+  }
+};
+
+/**
+ * Create a new playlist via backend
+ */
+export const createPlaylist = async (
+  name: string,
+  description?: string,
+): Promise<Playlist> => {
+  try {
+    const authToken = localStorage.getItem("authToken");
+    const response = await fetch(`${API_BASE_URL}/v1/playlists`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({ name, description }),
+    });
+
+    const data = await response.json();
+
+    if (response.status === 401) {
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("user");
+      window.location.href = "/signin";
+      throw new Error("Session expired. Please sign in again.");
+    }
+
+    if (!response.ok) {
+      throw new Error(data.message || data.detail || "Failed to create playlist");
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Error creating playlist:", error);
+    throw error instanceof Error ? error : new Error("An error occurred");
+  }
+};
+
+/**
+ * Add a song to a specific playlist
+ */
+export const addSongToPlaylist = async (
+  playlistId: string,
+  song: Song,
+): Promise<void> => {
+  try {
+    const authToken = localStorage.getItem("authToken");
+    const response = await fetch(
+      `${API_BASE_URL}/v1/playlists/${playlistId}/songs/${song.id}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.message || data.detail || "Failed to add song");
+    }
+  } catch (error) {
+    console.error("Error adding song:", error);
+    throw error instanceof Error ? error : new Error("An error occurred");
+  }
+};
+
+/**
+ * Remove a song from a specific playlist
+ */
+export const removeSongFromPlaylist = async (
+  playlistId: string,
+  songId: string,
+): Promise<void> => {
+  try {
+    const authToken = localStorage.getItem("authToken");
+    const response = await fetch(
+      `${API_BASE_URL}/v1/playlists/${playlistId}/songs/${songId}`,
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.message || data.detail || "Failed to remove song");
+    }
+  } catch (error) {
+    console.error("Error removing song:", error);
+    throw error instanceof Error ? error : new Error("An error occurred");
+  }
+};
+
+/**
+ * Search for songs/artists using backend
+ */
+export const searchSongs = async (query: string): Promise<Song[]> => {
+  try {
+    if (!query.trim()) return [];
+    const response = await fetch(
+      `${API_BASE_URL}/v1/songs/search?query=${encodeURIComponent(query)}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || data.detail || "Failed to search songs");
+    }
+
+    return Array.isArray(data) ? data : data.songs || [];
+  } catch (error) {
+    console.error("Error searching songs:", error);
+    throw error instanceof Error ? error : new Error("An error occurred");
+  }
+};
+
+/**
+ * Get suggested songs based on preferences from backend
+ */
+export const getSuggestedSongs = async (): Promise<Song[]> => {
+  try {
+    const authToken = localStorage.getItem("authToken");
+    const response = await fetch(`${API_BASE_URL}/v1/songs/suggestions`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (response.status === 401) {
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("user");
+      window.location.href = "/signin";
+      throw new Error("Session expired. Please sign in again.");
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || data.detail || "Failed to fetch suggestions",
+      );
+    }
+
+    return Array.isArray(data) ? data : data.suggestions || [];
+  } catch (error) {
+    console.error("Error fetching suggestions:", error);
+    throw error instanceof Error ? error : new Error("An error occurred");
+  }
+};
+
+/**
+ * Rename/update a playlist via backend
+ */
+export const renamePlaylist = async (
+  playlistId: string,
+  name: string,
+  description?: string,
+): Promise<void> => {
+  try {
+    const authToken = localStorage.getItem("authToken");
+    const response = await fetch(`${API_BASE_URL}/v1/playlists/${playlistId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({ name, description }),
+    });
+
+    if (response.status === 401) {
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("user");
+      window.location.href = "/signin";
+      throw new Error("Session expired. Please sign in again.");
+    }
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.message || data.detail || "Failed to update playlist");
+    }
+  } catch (error) {
+    console.error("Error updating playlist:", error);
+    throw error instanceof Error ? error : new Error("An error occurred");
+  }
+};
+
+/**
+ * Delete a playlist via backend
+ */
+export const deletePlaylist = async (playlistId: string): Promise<void> => {
+  try {
+    const authToken = localStorage.getItem("authToken");
+    const response = await fetch(`${API_BASE_URL}/v1/playlists/${playlistId}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+    });
+
+    if (response.status === 401) {
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("user");
+      window.location.href = "/signin";
+      throw new Error("Session expired. Please sign in again.");
+    }
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.message || data.detail || "Failed to delete playlist");
+    }
+  } catch (error) {
+    console.error("Error deleting playlist:", error);
+    throw error instanceof Error ? error : new Error("An error occurred");
+  }
+};
+
+
+
