@@ -87,7 +87,7 @@ export const signupUser = async (
   payload: SignupPayload,
 ): Promise<SignupResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/v1/user/signup`, {
+    const response = await fetch(`${API_BASE_URL}/user/signup`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -118,7 +118,7 @@ export const signinUser = async (
   payload: SigninPayload,
 ): Promise<SigninResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/v1/user/signin`, {
+    const response = await fetch(`${API_BASE_URL}/user/signin`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -148,7 +148,7 @@ export const signinUser = async (
  */
 export const getGenres = async (): Promise<Genre[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/v1/genres/`, {
+    const response = await fetch(`${API_BASE_URL}/genres/`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -176,7 +176,7 @@ export const getGenres = async (): Promise<Genre[]> => {
  */
 export const getArtists = async (): Promise<Artist[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/v1/artists/`, {
+    const response = await fetch(`${API_BASE_URL}/artists/`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -207,7 +207,7 @@ export const saveUserPreferences = async (
 ): Promise<PreferenceResponse[]> => {
   try {
     const authToken = localStorage.getItem("authToken");
-    const response = await fetch(`${API_BASE_URL}/v1/preferences/`, {
+    const response = await fetch(`${API_BASE_URL}/preferences/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -240,7 +240,7 @@ export const saveUserPreferences = async (
 export const getUserPlaylists = async (): Promise<Playlist[]> => {
   try {
     const authToken = localStorage.getItem("authToken");
-    const response = await fetch(`${API_BASE_URL}/v1/playlists`, {
+    const response = await fetch(`${API_BASE_URL}/playlists`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -277,7 +277,7 @@ export const createPlaylist = async (
 ): Promise<Playlist> => {
   try {
     const authToken = localStorage.getItem("authToken");
-    const response = await fetch(`${API_BASE_URL}/v1/playlists`, {
+    const response = await fetch(`${API_BASE_URL}/playlists`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -316,7 +316,7 @@ export const addSongToPlaylist = async (
   try {
     const authToken = localStorage.getItem("authToken");
     const response = await fetch(
-      `${API_BASE_URL}/v1/playlists/${playlistId}/songs/${song.id}`,
+      `${API_BASE_URL}/playlists/${playlistId}/songs/${song.id}`,
       {
         method: "POST",
         headers: {
@@ -346,7 +346,7 @@ export const removeSongFromPlaylist = async (
   try {
     const authToken = localStorage.getItem("authToken");
     const response = await fetch(
-      `${API_BASE_URL}/v1/playlists/${playlistId}/songs/${songId}`,
+      `${API_BASE_URL}/playlists/${playlistId}/songs/${songId}`,
       {
         method: "DELETE",
         headers: {
@@ -373,7 +373,7 @@ export const searchSongs = async (query: string): Promise<Song[]> => {
   try {
     if (!query.trim()) return [];
     const response = await fetch(
-      `${API_BASE_URL}/v1/songs/search?query=${encodeURIComponent(query)}`,
+      `${API_BASE_URL}/songs/search?query=${encodeURIComponent(query)}`,
       {
         method: "GET",
         headers: {
@@ -401,7 +401,7 @@ export const searchSongs = async (query: string): Promise<Song[]> => {
 export const getSuggestedSongs = async (): Promise<Song[]> => {
   try {
     const authToken = localStorage.getItem("authToken");
-    const response = await fetch(`${API_BASE_URL}/v1/songs/suggestions`, {
+    const response = await fetch(`${API_BASE_URL}/songs/suggestions`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -441,7 +441,7 @@ export const renamePlaylist = async (
 ): Promise<void> => {
   try {
     const authToken = localStorage.getItem("authToken");
-    const response = await fetch(`${API_BASE_URL}/v1/playlists/${playlistId}`, {
+    const response = await fetch(`${API_BASE_URL}/playlists/${playlistId}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -473,7 +473,7 @@ export const renamePlaylist = async (
 export const deletePlaylist = async (playlistId: string): Promise<void> => {
   try {
     const authToken = localStorage.getItem("authToken");
-    const response = await fetch(`${API_BASE_URL}/v1/playlists/${playlistId}`, {
+    const response = await fetch(`${API_BASE_URL}/playlists/${playlistId}`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
