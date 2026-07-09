@@ -26,7 +26,12 @@ export default function Header() {
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Collapse id="basic-navbar-nav">
           <Nav className="ms-auto nav-center">
-            <Nav.Link href="#home">Home</Nav.Link>
+            <Nav.Link onClick={() => navigate("/")}>Home</Nav.Link>
+            {isAuthenticated && (
+              <Nav.Link onClick={() => navigate("/playlists")}>
+                Playlists
+              </Nav.Link>
+            )}
             <Nav.Link href="#features">Features</Nav.Link>
             <Nav.Link href="#about">About us</Nav.Link>
             <Nav.Link href="#store">Music Store</Nav.Link>
