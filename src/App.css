@@ -67,3 +67,31 @@ img {
   max-width: 100%;
   height: auto;
 }
+
+.welcome-section {
+  background: linear-gradient(135deg, #09090b 0%, #1e1b4b 50%, #09090b 100%);
+  color: white;
+  padding-top: 100px !important;
+  padding-bottom: 60px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.welcome-title {
+  font-size: 3.5rem;
+  font-weight: 800;
+  margin-bottom: 15px;
+  letter-spacing: -1px;
+}
+
+.user-name {
+  background: linear-gradient(to right, #00c6ff, #0072ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.welcome-subtitle {
+  font-size: 1.3rem;
+  color: rgba(255, 255, 255, 0.6);
+  max-width: 600px;
+  margin: 0 auto;
+}
