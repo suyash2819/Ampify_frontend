@@ -266,7 +266,9 @@ export const streamSongToBlobUrl = async (songId: string): Promise<string> => {
     return url;
   } catch (error) {
     console.error("Error streaming song:", error);
- /* Fetch user playlists from the backend
+  }
+};
+/* Fetch user playlists from the backend
  */
 export const getUserPlaylists = async (): Promise<Playlist[]> => {
   try {
@@ -289,7 +291,9 @@ export const getUserPlaylists = async (): Promise<Playlist[]> => {
     }
 
     if (!response.ok) {
-      throw new Error(data.message || data.detail || "Failed to fetch playlists");
+      throw new Error(
+        data.message || data.detail || "Failed to fetch playlists",
+      );
     }
 
     return Array.isArray(data) ? data : data.playlists || [];
@@ -351,7 +355,7 @@ export const fetchSongRange = async (
     throw error instanceof Error ? error : new Error("An error occurred");
   }
 };
- /* Create a new playlist via backend
+/* Create a new playlist via backend
  */
 export const createPlaylist = async (
   name: string,
@@ -378,7 +382,9 @@ export const createPlaylist = async (
     }
 
     if (!response.ok) {
-      throw new Error(data.message || data.detail || "Failed to create playlist");
+      throw new Error(
+        data.message || data.detail || "Failed to create playlist",
+      );
     }
 
     return data;
@@ -541,7 +547,9 @@ export const renamePlaylist = async (
 
     if (!response.ok) {
       const data = await response.json();
-      throw new Error(data.message || data.detail || "Failed to update playlist");
+      throw new Error(
+        data.message || data.detail || "Failed to update playlist",
+      );
     }
   } catch (error) {
     console.error("Error updating playlist:", error);
@@ -572,13 +580,12 @@ export const deletePlaylist = async (playlistId: string): Promise<void> => {
 
     if (!response.ok) {
       const data = await response.json();
-      throw new Error(data.message || data.detail || "Failed to delete playlist");
+      throw new Error(
+        data.message || data.detail || "Failed to delete playlist",
+      );
     }
   } catch (error) {
     console.error("Error deleting playlist:", error);
     throw error instanceof Error ? error : new Error("An error occurred");
   }
 };
-
-
-
