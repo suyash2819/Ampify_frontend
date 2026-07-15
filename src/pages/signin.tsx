@@ -89,7 +89,7 @@ const Signin = () => {
               email: formData.email,
             };
 
-        login(response.access_token, userData);
+        login(response.access_token, userData, true);
         setSuccessMessage("Signin successful! Redirecting...");
         setFormData({ email: "", password: "" });
 

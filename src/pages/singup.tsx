@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Form, Alert, Spinner } from "react-bootstrap";
 import { signupUser } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 import "./signup.css";
 
 interface FormData {
@@ -17,6 +18,7 @@ interface FormErrors {
 }
 
 const Signup = () => {
+  const { login } = useAuth();
   const [formData, setFormData] = useState<FormData>({
     name: "",
     email: "",
@@ -84,14 +86,13 @@ const Signup = () => {
       const response = await signupUser(formData);
 
       if (response.id) {
-        // Store user info in localStorage for the preferences page
         const userData = {
           id: response.id,
           name: response.name,
           email: response.email,
         };
-        localStorage.setItem("user", JSON.stringify(userData));
-        localStorage.setItem("authToken", response.access_token);
+
+        login(response.access_token, userData, false);
 
         setSuccessMessage(
           "User registered successfully! Setting up preferences...",
