@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Form, Alert, Spinner } from "react-bootstrap";
-import { signinUser } from "../services/api";
+import { signinUser, getCurrentUser } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import "../pages/signup.css";
 
@@ -79,17 +79,10 @@ const Signin = () => {
       const response = await signinUser(formData);
 
       if (response.access_token) {
-        // Get user data from localStorage or create a minimal user object
-        const storedUser = localStorage.getItem("user");
-        const userData = storedUser
-          ? JSON.parse(storedUser)
-          : {
-              id: "", // Will be populated from user profile endpoint in future
-              name: formData.email.split("@")[0],
-              email: formData.email,
-            };
+        // Fetch the current user profile to get the real name and email
+        const userProfile = await getCurrentUser();
 
-        login(response.access_token, userData, true);
+        login(response.access_token, userProfile, true);
         setSuccessMessage("Signin successful! Redirecting...");
         setFormData({ email: "", password: "" });
 

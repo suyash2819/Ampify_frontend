@@ -27,6 +27,14 @@ interface SigninResponse {
   token_type: string;
 }
 
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 interface Genre {
   id: string;
   name: string;
@@ -135,6 +143,39 @@ export const signinUser = async (
     // Store the token in localStorage
     if (data.access_token) {
       localStorage.setItem("authToken", data.access_token);
+    }
+
+    return data;
+  } catch (error) {
+    throw error instanceof Error ? error : new Error("An error occurred");
+  }
+};
+
+/**
+ * Fetch current user profile
+ */
+export const getCurrentUser = async (): Promise<UserProfile> => {
+  try {
+    const authToken = localStorage.getItem("authToken");
+
+    if (!authToken) {
+      throw new Error("No authentication token found");
+    }
+
+    const response = await fetch(`${API_BASE_URL}/user/profile`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || data.detail || "Failed to fetch user profile",
+      );
     }
 
     return data;

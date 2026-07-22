@@ -33,7 +33,6 @@ export default function Header() {
                 Playlists
               </Nav.Link>
             )}
-            <Nav.Link href="#features">Features</Nav.Link>
             <Nav.Link href="#about">About us</Nav.Link>
             <Nav.Link href="#store">Music Store</Nav.Link>
             <Nav.Link href="#contact">Contact us</Nav.Link>

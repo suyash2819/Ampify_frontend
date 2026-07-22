@@ -12,7 +12,8 @@ import {
   Sparkles,
   AlertTriangle,
   ArrowLeft,
-  Loader2,
+  Play,
+  Pause,
 } from "lucide-react";
 import {
   getUserPlaylists,
@@ -26,6 +27,7 @@ import {
   Playlist,
   Song,
 } from "../services/api";
+import { useAudioStreaming } from "../hooks/useAudioStreaming";
 import "./PlaylistsPage.css";
 
 interface Toast {
@@ -69,6 +71,31 @@ const PlaylistsPage: React.FC = () => {
   // Toast notifications state
   const [toasts, setToasts] = useState<Toast[]>([]);
 
+  // Helper to trigger toast notification
+  const addToast = (message: string, type: Toast["type"]) => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 3000);
+  };
+
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  // Audio streaming hook
+  const {
+    audioRef,
+    currentlyPlayingSongId,
+    isPlaying,
+    handlePlaySong,
+    handleAudioEnded,
+  } = useAudioStreaming(
+    (error) => addToast(error, "error"),
+    (message) => addToast(message, "info"),
+  );
+
   const selectedPlaylist = playlists.find((p) => p.id === selectedPlaylistId);
 
   // Responsive listener
@@ -89,19 +116,6 @@ const PlaylistsPage: React.FC = () => {
     loadData();
   }, []);
 
-  // Helper to trigger toast notification
-  const addToast = (message: string, type: Toast["type"]) => {
-    const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 3000);
-  };
-
-  const removeToast = (id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
-
   const loadData = async () => {
     setLoading(true);
     setError(null);
@@ -115,11 +129,13 @@ const PlaylistsPage: React.FC = () => {
       const fetchedSuggestions = await getSuggestedSongs();
       setSuggestions(fetchedSuggestions);
       setLoading(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error loading playlists page:", err);
-      setError(
-        err.message || "Failed to load playlist data. Please try again.",
-      );
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Failed to load playlist data. Please try again.";
+      setError(message || "Failed to load playlist data. Please try again.");
       setLoading(false);
     }
   };
@@ -144,8 +160,10 @@ const PlaylistsPage: React.FC = () => {
       if (isMobile) {
         setMobileView("detail");
       }
-    } catch (err: any) {
-      addToast(err.message || "Failed to create playlist", "error");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to create playlist";
+      addToast(message || "Failed to create playlist", "error");
     }
   };
 
@@ -175,8 +193,10 @@ const PlaylistsPage: React.FC = () => {
       );
       setIsRenameModalOpen(false);
       addToast("Playlist updated successfully!", "success");
-    } catch (err: any) {
-      addToast(err.message || "Failed to update playlist", "error");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to update playlist";
+      addToast(message || "Failed to update playlist", "error");
     }
   };
 
@@ -203,8 +223,10 @@ const PlaylistsPage: React.FC = () => {
       if (isMobile) {
         setMobileView("list");
       }
-    } catch (err: any) {
-      addToast(err.message || "Failed to delete playlist", "error");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to delete playlist";
+      addToast(message || "Failed to delete playlist", "error");
     }
   };
 
@@ -257,8 +279,9 @@ const PlaylistsPage: React.FC = () => {
         }),
       );
       addToast(`Added "${song.title}" to playlist`, "success");
-    } catch (err: any) {
-      addToast(err.message || "Failed to add song", "error");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to add song";
+      addToast(message || "Failed to add song", "error");
     }
   };
 
@@ -276,8 +299,10 @@ const PlaylistsPage: React.FC = () => {
         }),
       );
       addToast(`Removed "${songTitle}" from playlist`, "info");
-    } catch (err: any) {
-      addToast(err.message || "Failed to remove song", "error");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to remove song";
+      addToast(message || "Failed to remove song", "error");
     }
   };
 
@@ -476,7 +501,7 @@ const PlaylistsPage: React.FC = () => {
                           selectedPlaylist.songs.map((song, index) => (
                             <div
                               key={`${song.id}-${index}`}
-                              className="song-table-row"
+                              className={`song-table-row ${currentlyPlayingSongId === song.id ? "playing" : ""}`}
                             >
                               <div className="row-index">{index + 1}</div>
                               <img
@@ -491,7 +516,30 @@ const PlaylistsPage: React.FC = () => {
                               <div className="song-artist-col">
                                 {song.artist}
                               </div>
-                              <div className="song-remove-action">
+                              <div className="song-action-buttons">
+                                <button
+                                  className={`btn-play-song ${currentlyPlayingSongId === song.id ? "active" : ""}`}
+                                  onClick={() => handlePlaySong(song)}
+                                  title={
+                                    currentlyPlayingSongId === song.id &&
+                                    isPlaying
+                                      ? "Pause song"
+                                      : "Play song"
+                                  }
+                                  aria-label={
+                                    currentlyPlayingSongId === song.id &&
+                                    isPlaying
+                                      ? `Pause ${song.title}`
+                                      : `Play ${song.title}`
+                                  }
+                                >
+                                  {currentlyPlayingSongId === song.id &&
+                                  isPlaying ? (
+                                    <Pause size={15} />
+                                  ) : (
+                                    <Play size={15} />
+                                  )}
+                                </button>
                                 <button
                                   className="btn-remove-song"
                                   onClick={() =>
@@ -501,7 +549,6 @@ const PlaylistsPage: React.FC = () => {
                                   aria-label={`Remove ${song.title} from playlist`}
                                 >
                                   <Trash2 size={15} />
-                                  <span>Remove</span>
                                 </button>
                               </div>
                             </div>
@@ -521,6 +568,13 @@ const PlaylistsPage: React.FC = () => {
                       </div>
                     </div>
                   </div>
+
+                  {/* Hidden audio element for playback */}
+                  <audio
+                    ref={audioRef}
+                    onEnded={handleAudioEnded}
+                    crossOrigin="anonymous"
+                  />
 
                   {/* Add Music Search and Suggestions */}
                   <div className="music-discovery-container">
