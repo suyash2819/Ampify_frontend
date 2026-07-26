@@ -38,7 +38,7 @@ export default function Hero() {
                 src="https://storage.googleapis.com/ampify-assets/images/selena-gomez.webp"
                 alt="Selena Gomez"
               />
-              <div className="card-label">SELENA GOMEZ</div>
+              {/* <div className="card-label">SELENA GOMEZ</div> */}
             </div>
 
             <div className="card card-clash">
@@ -46,7 +46,7 @@ export default function Hero() {
                 src="https://storage.googleapis.com/ampify-assets/images/weekend.webp"
                 alt="WEEKEND"
               />
-              <div className="card-label">WEEKEND</div>
+              {/* <div className="card-label">WEEKND</div> */}
             </div>
 
             <div className="card card-side">

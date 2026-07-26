@@ -20,7 +20,7 @@ const singers: Singer[] = [
   },
   {
     id: 2,
-    name: "Zayn Malik",
+    name: "The Weeknd",
     genre: "Pop R&B",
     rating: 4.7,
     image: "https://storage.googleapis.com/ampify-assets/images/weekend.webp",
@@ -30,14 +30,16 @@ const singers: Singer[] = [
     name: "Camila Cabello",
     genre: "Pop Singer",
     rating: 4.7,
-    image: "https://storage.googleapis.com/ampify-assets/images/artist-3.jpg",
+    image:
+      "https://storage.googleapis.com/ampify-assets/images/camila_cabello.webp",
   },
   {
     id: 4,
     name: "Harry Styles",
     genre: "Soft Rock",
     rating: 4.6,
-    image: "https://storage.googleapis.com/ampify-assets/images/artist-4.jpg",
+    image:
+      "https://storage.googleapis.com/ampify-assets/images/harry_styles.webp",
   },
 ];
 
@@ -45,7 +47,7 @@ export default function PopularSingers() {
   return (
     <section className="popular-singers">
       <Container>
-        <h2 className="singers-title">Popular Singer</h2>
+        <h2 className="singers-title">Popular Singers</h2>
 
         <Row className="singers-grid">
           {singers.map((singer) => (
@@ -54,7 +56,7 @@ export default function PopularSingers() {
                 <div className="singer-image">
                   <img src={singer.image} alt={singer.name} />
                   <div className="singer-overlay">
-                    <button className="play-btn">▶</button>
+                    {/* <button className="play-btn">▶</button> */}
                   </div>
                 </div>
                 <div className="singer-info">

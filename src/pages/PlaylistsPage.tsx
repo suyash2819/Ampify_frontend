@@ -12,7 +12,8 @@ import {
   Sparkles,
   AlertTriangle,
   ArrowLeft,
-  Loader2
+  Play,
+  Pause,
 } from "lucide-react";
 import {
   getUserPlaylists,
@@ -26,6 +27,7 @@ import {
   Playlist,
   Song,
 } from "../services/api";
+import { useAudioStreaming } from "../hooks/useAudioStreaming";
 import "./PlaylistsPage.css";
 
 interface Toast {
@@ -37,7 +39,9 @@ interface Toast {
 const PlaylistsPage: React.FC = () => {
   // Playlist states
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);
+  const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(
+    null,
+  );
   const [playlistFilterQuery, setPlaylistFilterQuery] = useState("");
 
   // Music discovery states
@@ -67,6 +71,31 @@ const PlaylistsPage: React.FC = () => {
   // Toast notifications state
   const [toasts, setToasts] = useState<Toast[]>([]);
 
+  // Helper to trigger toast notification
+  const addToast = (message: string, type: Toast["type"]) => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 3000);
+  };
+
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  // Audio streaming hook
+  const {
+    audioRef,
+    currentlyPlayingSongId,
+    isPlaying,
+    handlePlaySong,
+    handleAudioEnded,
+  } = useAudioStreaming(
+    (error) => addToast(error, "error"),
+    (message) => addToast(message, "info"),
+  );
+
   const selectedPlaylist = playlists.find((p) => p.id === selectedPlaylistId);
 
   // Responsive listener
@@ -87,19 +116,6 @@ const PlaylistsPage: React.FC = () => {
     loadData();
   }, []);
 
-  // Helper to trigger toast notification
-  const addToast = (message: string, type: Toast["type"]) => {
-    const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 3000);
-  };
-
-  const removeToast = (id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
-
   const loadData = async () => {
     setLoading(true);
     setError(null);
@@ -113,9 +129,13 @@ const PlaylistsPage: React.FC = () => {
       const fetchedSuggestions = await getSuggestedSongs();
       setSuggestions(fetchedSuggestions);
       setLoading(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error loading playlists page:", err);
-      setError(err.message || "Failed to load playlist data. Please try again.");
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Failed to load playlist data. Please try again.";
+      setError(message || "Failed to load playlist data. Please try again.");
       setLoading(false);
     }
   };
@@ -127,7 +147,10 @@ const PlaylistsPage: React.FC = () => {
       return;
     }
     try {
-      const created = await createPlaylist(newPlaylistName.trim(), newPlaylistDescription.trim());
+      const created = await createPlaylist(
+        newPlaylistName.trim(),
+        newPlaylistDescription.trim(),
+      );
       setPlaylists((prev) => [created, ...prev]);
       setSelectedPlaylistId(created.id);
       setIsCreateModalOpen(false);
@@ -137,8 +160,10 @@ const PlaylistsPage: React.FC = () => {
       if (isMobile) {
         setMobileView("detail");
       }
-    } catch (err: any) {
-      addToast(err.message || "Failed to create playlist", "error");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to create playlist";
+      addToast(message || "Failed to create playlist", "error");
     }
   };
 
@@ -150,18 +175,28 @@ const PlaylistsPage: React.FC = () => {
       return;
     }
     try {
-      await renamePlaylist(selectedPlaylistId, editPlaylistName.trim(), editPlaylistDescription.trim());
+      await renamePlaylist(
+        selectedPlaylistId,
+        editPlaylistName.trim(),
+        editPlaylistDescription.trim(),
+      );
       setPlaylists((prev) =>
         prev.map((p) =>
           p.id === selectedPlaylistId
-            ? { ...p, name: editPlaylistName.trim(), description: editPlaylistDescription.trim() }
-            : p
-        )
+            ? {
+                ...p,
+                name: editPlaylistName.trim(),
+                description: editPlaylistDescription.trim(),
+              }
+            : p,
+        ),
       );
       setIsRenameModalOpen(false);
       addToast("Playlist updated successfully!", "success");
-    } catch (err: any) {
-      addToast(err.message || "Failed to update playlist", "error");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to update playlist";
+      addToast(message || "Failed to update playlist", "error");
     }
   };
 
@@ -171,7 +206,9 @@ const PlaylistsPage: React.FC = () => {
     const playlistName = selectedPlaylist?.name || "Playlist";
     try {
       await deletePlaylist(selectedPlaylistId);
-      const updatedPlaylists = playlists.filter((p) => p.id !== selectedPlaylistId);
+      const updatedPlaylists = playlists.filter(
+        (p) => p.id !== selectedPlaylistId,
+      );
       setPlaylists(updatedPlaylists);
       setIsDeleteModalOpen(false);
 
@@ -186,8 +223,10 @@ const PlaylistsPage: React.FC = () => {
       if (isMobile) {
         setMobileView("list");
       }
-    } catch (err: any) {
-      addToast(err.message || "Failed to delete playlist", "error");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to delete playlist";
+      addToast(message || "Failed to delete playlist", "error");
     }
   };
 
@@ -237,11 +276,12 @@ const PlaylistsPage: React.FC = () => {
             return { ...p, songs: [...p.songs, song] };
           }
           return p;
-        })
+        }),
       );
       addToast(`Added "${song.title}" to playlist`, "success");
-    } catch (err: any) {
-      addToast(err.message || "Failed to add song", "error");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to add song";
+      addToast(message || "Failed to add song", "error");
     }
   };
 
@@ -256,17 +296,19 @@ const PlaylistsPage: React.FC = () => {
             return { ...p, songs: p.songs.filter((s) => s.id !== songId) };
           }
           return p;
-        })
+        }),
       );
       addToast(`Removed "${songTitle}" from playlist`, "info");
-    } catch (err: any) {
-      addToast(err.message || "Failed to remove song", "error");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to remove song";
+      addToast(message || "Failed to remove song", "error");
     }
   };
 
   // Filter playlists in sidebar
   const filteredPlaylists = playlists.filter((p) =>
-    p.name.toLowerCase().includes(playlistFilterQuery.toLowerCase())
+    p.name.toLowerCase().includes(playlistFilterQuery.toLowerCase()),
   );
 
   // Render Loader
@@ -303,7 +345,6 @@ const PlaylistsPage: React.FC = () => {
     <div className="playlists-page">
       <div className="container-fluid px-md-5">
         <div className="playlists-container">
-
           {/* LEFT SIDEBAR: Playlists selector */}
           {(!isMobile || mobileView === "list") && (
             <div className="playlists-sidebar">
@@ -355,7 +396,8 @@ const PlaylistsPage: React.FC = () => {
                       <div className="item-details">
                         <h4 className="item-name">{playlist.name}</h4>
                         <p className="item-count">
-                          {playlist.songs.length} {playlist.songs.length === 1 ? "song" : "songs"}
+                          {playlist.songs.length}{" "}
+                          {playlist.songs.length === 1 ? "song" : "songs"}
                         </p>
                       </div>
                     </div>
@@ -407,23 +449,36 @@ const PlaylistsPage: React.FC = () => {
                       </div>
                       <div className="detail-info">
                         <span className="badge-playlist">Playlist</span>
-                        <h2 className="playlist-title-header">{selectedPlaylist.name}</h2>
+                        <h2 className="playlist-title-header">
+                          {selectedPlaylist.name}
+                        </h2>
                         {selectedPlaylist.description && (
-                          <p className="playlist-description-text">{selectedPlaylist.description}</p>
+                          <p className="playlist-description-text">
+                            {selectedPlaylist.description}
+                          </p>
                         )}
                         <div className="detail-stats">
                           <span>Created by you</span>
                           <span className="bullet-separator">•</span>
                           <span>
-                            {selectedPlaylist.songs.length} {selectedPlaylist.songs.length === 1 ? "song" : "songs"}
+                            {selectedPlaylist.songs.length}{" "}
+                            {selectedPlaylist.songs.length === 1
+                              ? "song"
+                              : "songs"}
                           </span>
                         </div>
                         <div className="action-buttons-group">
-                          <button className="btn-premium-outline" onClick={openRenameModal}>
+                          <button
+                            className="btn-premium-outline"
+                            onClick={openRenameModal}
+                          >
                             <Edit2 size={16} />
                             Edit Details
                           </button>
-                          <button className="btn-premium-danger-outline" onClick={() => setIsDeleteModalOpen(true)}>
+                          <button
+                            className="btn-premium-danger-outline"
+                            onClick={() => setIsDeleteModalOpen(true)}
+                          >
                             <Trash2 size={16} />
                             Delete Playlist
                           </button>
@@ -444,24 +499,56 @@ const PlaylistsPage: React.FC = () => {
                       <div className="song-list-scroll">
                         {selectedPlaylist.songs.length > 0 ? (
                           selectedPlaylist.songs.map((song, index) => (
-                            <div key={`${song.id}-${index}`} className="song-table-row">
+                            <div
+                              key={`${song.id}-${index}`}
+                              className={`song-table-row ${currentlyPlayingSongId === song.id ? "playing" : ""}`}
+                            >
                               <div className="row-index">{index + 1}</div>
                               <img
-                                src={song.image_url || "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=100&auto=format&fit=crop&q=60"}
+                                src={
+                                  song.image_url ||
+                                  "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=100&auto=format&fit=crop&q=60"
+                                }
                                 alt={song.title}
                                 className="song-image"
                               />
                               <div className="song-title-col">{song.title}</div>
-                              <div className="song-artist-col">{song.artist}</div>
-                              <div className="song-remove-action">
+                              <div className="song-artist-col">
+                                {song.artist}
+                              </div>
+                              <div className="song-action-buttons">
+                                <button
+                                  className={`btn-play-song ${currentlyPlayingSongId === song.id ? "active" : ""}`}
+                                  onClick={() => handlePlaySong(song)}
+                                  title={
+                                    currentlyPlayingSongId === song.id &&
+                                    isPlaying
+                                      ? "Pause song"
+                                      : "Play song"
+                                  }
+                                  aria-label={
+                                    currentlyPlayingSongId === song.id &&
+                                    isPlaying
+                                      ? `Pause ${song.title}`
+                                      : `Play ${song.title}`
+                                  }
+                                >
+                                  {currentlyPlayingSongId === song.id &&
+                                  isPlaying ? (
+                                    <Pause size={15} />
+                                  ) : (
+                                    <Play size={15} />
+                                  )}
+                                </button>
                                 <button
                                   className="btn-remove-song"
-                                  onClick={() => handleRemoveSong(song.id, song.title)}
+                                  onClick={() =>
+                                    handleRemoveSong(song.id, song.title)
+                                  }
                                   title="Remove song from playlist"
                                   aria-label={`Remove ${song.title} from playlist`}
                                 >
                                   <Trash2 size={15} />
-                                  <span>Remove</span>
                                 </button>
                               </div>
                             </div>
@@ -469,25 +556,44 @@ const PlaylistsPage: React.FC = () => {
                         ) : (
                           <div className="empty-state-box py-5">
                             <Music size={40} />
-                            <p className="empty-state-title">This playlist is empty</p>
-                            <p className="empty-state-subtitle">Search for songs below to add them to your playlist.</p>
+                            <p className="empty-state-title">
+                              This playlist is empty
+                            </p>
+                            <p className="empty-state-subtitle">
+                              Search for songs below to add them to your
+                              playlist.
+                            </p>
                           </div>
                         )}
                       </div>
                     </div>
                   </div>
 
+                  {/* Hidden audio element for playback */}
+                  <audio
+                    ref={audioRef}
+                    onEnded={handleAudioEnded}
+                    crossOrigin="anonymous"
+                  />
+
                   {/* Add Music Search and Suggestions */}
                   <div className="music-discovery-container">
-                    <h3 className="discovery-section-title">Add songs to this playlist</h3>
+                    <h3 className="discovery-section-title">
+                      Add songs to this playlist
+                    </h3>
 
                     <div className="row">
                       {/* Search for songs */}
                       <div className="col-lg-7 mb-4 mb-lg-0">
                         <div className="pe-lg-4">
-                          <h4 className="fs-6 fw-bold mb-3 text-white-50">Search for tracks</h4>
+                          <h4 className="fs-6 fw-bold mb-3 text-white-50">
+                            Search for tracks
+                          </h4>
                           <div className="discovery-search-wrapper">
-                            <Search size={18} className="discovery-search-icon" />
+                            <Search
+                              size={18}
+                              className="discovery-search-icon"
+                            />
                             <input
                               type="text"
                               className="discovery-search-input"
@@ -500,13 +606,25 @@ const PlaylistsPage: React.FC = () => {
                           <div className="search-results-list">
                             {searchResults.length > 0 ? (
                               searchResults.map((song) => {
-                                const isAdded = selectedPlaylist.songs.some((s) => s.id === song.id);
+                                const isAdded = selectedPlaylist.songs.some(
+                                  (s) => s.id === song.id,
+                                );
                                 return (
-                                  <div key={song.id} className="discovery-song-item">
-                                    <img src={song.image_url} alt={song.title} />
+                                  <div
+                                    key={song.id}
+                                    className="discovery-song-item"
+                                  >
+                                    <img
+                                      src={song.image_url}
+                                      alt={song.title}
+                                    />
                                     <div className="discovery-song-details">
-                                      <span className="discovery-song-title">{song.title}</span>
-                                      <span className="discovery-song-artist">{song.artist}</span>
+                                      <span className="discovery-song-title">
+                                        {song.title}
+                                      </span>
+                                      <span className="discovery-song-artist">
+                                        {song.artist}
+                                      </span>
                                     </div>
                                     <button
                                       className="btn-add-song"
@@ -518,12 +636,14 @@ const PlaylistsPage: React.FC = () => {
                                   </div>
                                 );
                               })
+                            ) : searchQuery.trim() ? (
+                              <p className="text-white-50 fs-7 italic py-2">
+                                No matches found for "{searchQuery}"
+                              </p>
                             ) : (
-                              searchQuery.trim() ? (
-                                <p className="text-white-50 fs-7 italic py-2">No matches found for "{searchQuery}"</p>
-                              ) : (
-                                <p className="text-white-50 fs-7 italic py-2">Type above to search Ampify's library</p>
-                              )
+                              <p className="text-white-50 fs-7 italic py-2">
+                                Type above to search Ampify's library
+                              </p>
                             )}
                           </div>
                         </div>
@@ -540,13 +660,25 @@ const PlaylistsPage: React.FC = () => {
                           <div className="suggestions-list">
                             {suggestions.length > 0 ? (
                               suggestions.map((song) => {
-                                const isAdded = selectedPlaylist.songs.some((s) => s.id === song.id);
+                                const isAdded = selectedPlaylist.songs.some(
+                                  (s) => s.id === song.id,
+                                );
                                 return (
-                                  <div key={song.id} className="discovery-song-item">
-                                    <img src={song.image_url} alt={song.title} />
+                                  <div
+                                    key={song.id}
+                                    className="discovery-song-item"
+                                  >
+                                    <img
+                                      src={song.image_url}
+                                      alt={song.title}
+                                    />
                                     <div className="discovery-song-details">
-                                      <span className="discovery-song-title">{song.title}</span>
-                                      <span className="discovery-song-artist">{song.artist}</span>
+                                      <span className="discovery-song-title">
+                                        {song.title}
+                                      </span>
+                                      <span className="discovery-song-artist">
+                                        {song.artist}
+                                      </span>
                                     </div>
                                     <button
                                       className="btn-add-song"
@@ -559,7 +691,9 @@ const PlaylistsPage: React.FC = () => {
                                 );
                               })
                             ) : (
-                              <p className="text-white-50 fs-7 py-2">No recommendations available</p>
+                              <p className="text-white-50 fs-7 py-2">
+                                No recommendations available
+                              </p>
                             )}
                           </div>
                         </div>
@@ -571,8 +705,14 @@ const PlaylistsPage: React.FC = () => {
                 <div className="empty-state-box py-5">
                   <Music size={50} />
                   <p className="empty-state-title">No playlist selected</p>
-                  <p className="empty-state-subtitle">Select a playlist from the sidebar library or create a new one to begin.</p>
-                  <button className="btn-premium mt-4" onClick={() => setIsCreateModalOpen(true)}>
+                  <p className="empty-state-subtitle">
+                    Select a playlist from the sidebar library or create a new
+                    one to begin.
+                  </p>
+                  <button
+                    className="btn-premium mt-4"
+                    onClick={() => setIsCreateModalOpen(true)}
+                  >
                     <Plus size={18} />
                     Create Playlist
                   </button>
@@ -580,17 +720,22 @@ const PlaylistsPage: React.FC = () => {
               )}
             </div>
           )}
-
         </div>
       </div>
 
       {/* CREATE MODAL */}
       {isCreateModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsCreateModalOpen(false)}>
+        <div
+          className="modal-overlay"
+          onClick={() => setIsCreateModalOpen(false)}
+        >
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
             <div className="d-flex justify-content-between align-items-center mb-3">
               <h3>Create Playlist</h3>
-              <button className="btn-close-toast" onClick={() => setIsCreateModalOpen(false)}>
+              <button
+                className="btn-close-toast"
+                onClick={() => setIsCreateModalOpen(false)}
+              >
                 <X size={20} />
               </button>
             </div>
@@ -619,7 +764,10 @@ const PlaylistsPage: React.FC = () => {
             </div>
 
             <div className="modal-actions">
-              <button className="btn-premium-outline" onClick={() => setIsCreateModalOpen(false)}>
+              <button
+                className="btn-premium-outline"
+                onClick={() => setIsCreateModalOpen(false)}
+              >
                 Cancel
               </button>
               <button className="btn-premium" onClick={handleCreatePlaylist}>
@@ -632,11 +780,17 @@ const PlaylistsPage: React.FC = () => {
 
       {/* RENAME / EDIT DETAILS MODAL */}
       {isRenameModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsRenameModalOpen(false)}>
+        <div
+          className="modal-overlay"
+          onClick={() => setIsRenameModalOpen(false)}
+        >
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
             <div className="d-flex justify-content-between align-items-center mb-3">
               <h3>Edit Playlist Details</h3>
-              <button className="btn-close-toast" onClick={() => setIsRenameModalOpen(false)}>
+              <button
+                className="btn-close-toast"
+                onClick={() => setIsRenameModalOpen(false)}
+              >
                 <X size={20} />
               </button>
             </div>
@@ -665,7 +819,10 @@ const PlaylistsPage: React.FC = () => {
             </div>
 
             <div className="modal-actions">
-              <button className="btn-premium-outline" onClick={() => setIsRenameModalOpen(false)}>
+              <button
+                className="btn-premium-outline"
+                onClick={() => setIsRenameModalOpen(false)}
+              >
                 Cancel
               </button>
               <button className="btn-premium" onClick={handleRenamePlaylist}>
@@ -678,23 +835,37 @@ const PlaylistsPage: React.FC = () => {
 
       {/* DELETE CONFIRMATION MODAL */}
       {isDeleteModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsDeleteModalOpen(false)}>
+        <div
+          className="modal-overlay"
+          onClick={() => setIsDeleteModalOpen(false)}
+        >
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
             <div className="d-flex justify-content-between align-items-center mb-3">
               <h3 className="text-danger">Delete Playlist</h3>
-              <button className="btn-close-toast" onClick={() => setIsDeleteModalOpen(false)}>
+              <button
+                className="btn-close-toast"
+                onClick={() => setIsDeleteModalOpen(false)}
+              >
                 <X size={20} />
               </button>
             </div>
             <p className="mb-4">
-              Are you sure you want to delete <strong>"{selectedPlaylist?.name}"</strong>? This will permanently erase the playlist. Your songs will remain in the main library.
+              Are you sure you want to delete{" "}
+              <strong>"{selectedPlaylist?.name}"</strong>? This will permanently
+              erase the playlist. Your songs will remain in the main library.
             </p>
 
             <div className="modal-actions">
-              <button className="btn-premium-outline" onClick={() => setIsDeleteModalOpen(false)}>
+              <button
+                className="btn-premium-outline"
+                onClick={() => setIsDeleteModalOpen(false)}
+              >
                 Cancel
               </button>
-              <button className="btn-premium btn-premium-danger-outline border-0 py-2 px-4" onClick={handleDeletePlaylist}>
+              <button
+                className="btn-premium btn-premium-danger-outline border-0 py-2 px-4"
+                onClick={handleDeletePlaylist}
+              >
                 Delete
               </button>
             </div>
@@ -715,13 +886,15 @@ const PlaylistsPage: React.FC = () => {
             <div className="toast-content">
               <p className="toast-message">{toast.message}</p>
             </div>
-            <button className="btn-close-toast" onClick={() => removeToast(toast.id)}>
+            <button
+              className="btn-close-toast"
+              onClick={() => removeToast(toast.id)}
+            >
               <X size={14} />
             </button>
           </div>
         ))}
       </div>
-
     </div>
   );
 };

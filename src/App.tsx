@@ -11,6 +11,7 @@ import PopularSingers from "./components/PopularSingers";
 import Signup from "./pages/singup";
 import Signin from "./pages/signin";
 import Preferences from "./pages/preferences";
+import Features from "./pages/features";
 import PlaylistsPage from "./pages/PlaylistsPage";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import "./App.css";
@@ -26,21 +27,35 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function Home() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isReturningUser } = useAuth();
 
   return (
     <>
       {isAuthenticated && user ? (
-        <section className="welcome-section py-5 text-center">
-          <div className="container">
-            <h1 className="welcome-title">
-              Welcome back, <span className="user-name">{user.name}</span>!
-            </h1>
-            <p className="welcome-subtitle">
-              Ready for some music? Dive back into your playlists.
-            </p>
-          </div>
-        </section>
+        isReturningUser ? (
+          <section className="welcome-section py-5 text-center">
+            <div className="container">
+              <h1 className="welcome-title">
+                Welcome back, <span className="user-name">{user.name}</span>!
+              </h1>
+              <p className="welcome-subtitle">
+                Ready for some music? Dive back into your playlists.
+              </p>
+            </div>
+          </section>
+        ) : (
+          <section className="welcome-section py-5 text-center">
+            <div className="container">
+              <h1 className="welcome-title">
+                Welcome to Ampify,{" "}
+                <span className="user-name">{user.name}</span>!
+              </h1>
+              <p className="welcome-subtitle">
+                Let's set up your taste and discover music you will love.
+              </p>
+            </div>
+          </section>
+        )
       ) : (
         <Hero />
       )}
@@ -59,6 +74,7 @@ function App() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/signin" element={<Signin />} />
           <Route path="/preferences" element={<Preferences />} />
+          {/* <Route path="/features" element={<Features />} /> */}
           <Route
             path="/playlists"
             element={
