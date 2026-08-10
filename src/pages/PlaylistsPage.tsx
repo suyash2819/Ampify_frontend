@@ -97,6 +97,11 @@ const PlaylistsPage: React.FC = () => {
   );
 
   const selectedPlaylist = playlists.find((p) => p.id === selectedPlaylistId);
+  const currentlyPlayingSong = selectedPlaylist?.songs.find(
+    (song) => song.id === currentlyPlayingSongId,
+  );
+  const [playbackProgress, setPlaybackProgress] = useState(0);
+  const [playbackDuration, setPlaybackDuration] = useState(0);
 
   // Responsive listener
   useEffect(() => {
@@ -110,6 +115,50 @@ const PlaylistsPage: React.FC = () => {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  // Track playback progress for the bottom player bar.
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const updatePlaybackState = () => {
+      setPlaybackProgress(audio.currentTime);
+      setPlaybackDuration(audio.duration || 0);
+    };
+
+    // Poll the audio position frequently to ensure the progress bar moves smoothly.
+    const intervalId = window.setInterval(() => {
+      if (!audio.paused && !audio.ended) {
+        updatePlaybackState();
+      }
+    }, 100);
+
+    audio.addEventListener("timeupdate", updatePlaybackState);
+    audio.addEventListener("loadedmetadata", updatePlaybackState);
+    audio.addEventListener("durationchange", updatePlaybackState);
+    audio.addEventListener("play", updatePlaybackState);
+    audio.addEventListener("playing", updatePlaybackState);
+    audio.addEventListener("pause", updatePlaybackState);
+    audio.addEventListener("ended", updatePlaybackState);
+
+    updatePlaybackState();
+
+    return () => {
+      window.clearInterval(intervalId);
+      audio.removeEventListener("timeupdate", updatePlaybackState);
+      audio.removeEventListener("loadedmetadata", updatePlaybackState);
+      audio.removeEventListener("durationchange", updatePlaybackState);
+      audio.removeEventListener("play", updatePlaybackState);
+      audio.removeEventListener("playing", updatePlaybackState);
+      audio.removeEventListener("pause", updatePlaybackState);
+      audio.removeEventListener("ended", updatePlaybackState);
+    };
+  }, [audioRef, currentlyPlayingSongId]);
+
+  useEffect(() => {
+    setPlaybackProgress(0);
+    setPlaybackDuration(0);
+  }, [currentlyPlayingSongId]);
 
   // Fetch initial data
   useEffect(() => {
@@ -510,36 +559,20 @@ const PlaylistsPage: React.FC = () => {
                                   "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=100&auto=format&fit=crop&q=60"
                                 }
                                 alt={song.title}
-                                className="song-image"
+                                className="song-image clickable"
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => handlePlaySong(song)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") handlePlaySong(song);
+                                }}
+                                aria-label={`Play ${song.title}`}
                               />
                               <div className="song-title-col">{song.title}</div>
                               <div className="song-artist-col">
                                 {song.artist}
                               </div>
                               <div className="song-action-buttons">
-                                <button
-                                  className={`btn-play-song ${currentlyPlayingSongId === song.id ? "active" : ""}`}
-                                  onClick={() => handlePlaySong(song)}
-                                  title={
-                                    currentlyPlayingSongId === song.id &&
-                                    isPlaying
-                                      ? "Pause song"
-                                      : "Play song"
-                                  }
-                                  aria-label={
-                                    currentlyPlayingSongId === song.id &&
-                                    isPlaying
-                                      ? `Pause ${song.title}`
-                                      : `Play ${song.title}`
-                                  }
-                                >
-                                  {currentlyPlayingSongId === song.id &&
-                                  isPlaying ? (
-                                    <Pause size={15} />
-                                  ) : (
-                                    <Play size={15} />
-                                  )}
-                                </button>
                                 <button
                                   className="btn-remove-song"
                                   onClick={() =>
@@ -868,6 +901,52 @@ const PlaylistsPage: React.FC = () => {
               >
                 Delete
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {currentlyPlayingSongId && currentlyPlayingSong && (
+        <div className="bottom-player-bar">
+          <div className="bottom-player-inner">
+            <div className="bottom-player-left">
+              <img
+                src={
+                  currentlyPlayingSong.image_url ||
+                  "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=100&auto=format&fit=crop&q=60"
+                }
+                alt={currentlyPlayingSong.title}
+                className="bottom-player-poster"
+              />
+              <div className="bottom-player-meta">
+                <span className="bottom-player-title">
+                  {currentlyPlayingSong.title}
+                </span>
+                <span className="bottom-player-artist">
+                  {currentlyPlayingSong.artist}
+                </span>
+              </div>
+            </div>
+            <button
+              className="bottom-player-action"
+              onClick={() => handlePlaySong(currentlyPlayingSong)}
+              aria-label={isPlaying ? "Pause song" : "Play song"}
+            >
+              {isPlaying ? <Pause size={18} /> : <Play size={18} />}
+            </button>
+          </div>
+
+          <div className="bottom-player-progress">
+            <div className="bottom-player-progress-track">
+              <div
+                className="bottom-player-progress-fill"
+                style={{
+                  width:
+                    playbackDuration > 0
+                      ? `${(playbackProgress / playbackDuration) * 100}%`
+                      : "0%",
+                }}
+              />
             </div>
           </div>
         </div>
