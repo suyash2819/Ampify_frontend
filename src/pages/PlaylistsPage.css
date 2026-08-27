@@ -45,6 +45,122 @@
   margin-bottom: 20px;
 }
 
+.bottom-player-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  background: rgba(8, 7, 24, 0.95);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+  padding: 12px 24px;
+}
+
+.bottom-player-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.bottom-player-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.bottom-player-icon {
+  display: none;
+}
+
+.bottom-player-poster {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  object-fit: cover;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+.bottom-player-meta {
+  min-width: 0;
+}
+
+.bottom-player-title {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bottom-player-artist {
+  display: block;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.64);
+}
+
+.bottom-player-action {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.22s ease;
+}
+
+.bottom-player-action svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  stroke-width: 2px;
+}
+
+.bottom-player-action:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.bottom-player-progress {
+  margin-top: 12px;
+}
+
+.bottom-player-progress-track {
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
+  height: 6px;
+  overflow: hidden;
+}
+
+.bottom-player-progress-fill {
+  background: linear-gradient(90deg, #00c6ff, #4f94ff);
+  height: 100%;
+  width: 0;
+  transition: width 0.2s ease;
+}
+
+.playlists-page {
+  background: radial-gradient(circle at 50% 0%, #1e134a 0%, #080518 70%);
+  min-height: 100vh;
+  padding: 85px 0 60px;
+  color: #ffffff;
+  font-family:
+    "Outfit",
+    "Inter",
+    -apple-system,
+    sans-serif;
+  overflow-x: hidden;
+}
+
 .sidebar-title {
   font-size: 1.4rem;
   font-weight: 700;
@@ -436,6 +552,10 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
+.song-image.clickable {
+  cursor: pointer;
+}
+
 .song-title-col {
   font-weight: 600;
   color: #fff;
@@ -454,7 +574,7 @@
 .song-action-buttons {
   display: flex;
   gap: 8px;
-  justify-self: end;
+  justify-self: center;
   align-items: center;
 }
 

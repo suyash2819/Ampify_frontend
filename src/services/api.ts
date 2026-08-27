@@ -351,6 +351,7 @@ export const fetchSongRange = async (
   songId: string,
   start?: number,
   end?: number,
+  signal?: AbortSignal,
 ): Promise<{
   data: ArrayBuffer;
   contentRange?: string | null;
@@ -370,6 +371,7 @@ export const fetchSongRange = async (
     const response = await fetch(`${API_BASE_URL}/songs/${songId}/stream`, {
       method: "GET",
       headers,
+      signal,
     });
 
     if (!response.ok && response.status !== 206 && response.status !== 200) {
@@ -392,6 +394,9 @@ export const fetchSongRange = async (
       acceptRanges: response.headers.get("Accept-Ranges"),
     };
   } catch (error) {
+    if ((error as any)?.name === "AbortError") {
+      throw error;
+    }
     console.error("Error fetching song range:", error);
     throw error instanceof Error ? error : new Error("An error occurred");
   }
