@@ -14,6 +14,9 @@ import {
   ArrowLeft,
   Play,
   Pause,
+  ArrowUp,
+  ArrowDown,
+  SkipForward,
 } from "lucide-react";
 import {
   getUserPlaylists,
@@ -28,6 +31,7 @@ import {
   Song,
 } from "../services/api";
 import { useAudioStreaming } from "../hooks/useAudioStreaming";
+import { usePlaybackQueue } from "../context/PlaybackQueueContext";
 import "./PlaylistsPage.css";
 
 interface Toast {
@@ -96,10 +100,27 @@ const PlaylistsPage: React.FC = () => {
     (message) => addToast(message, "info"),
   );
 
+  const { queue, enqueue, removeAt, move, dequeue } = usePlaybackQueue();
+
+  const ensureQueuedAndPlay = async (song: Song) => {
+    if (!song) return;
+    // If starting a new song and the queue was empty, create a new queue with this song.
+    if (currentlyPlayingSongId !== song.id && queue.length === 0) {
+      const already = queue.some((q) => q.id === song.id);
+      if (!already) enqueue(song);
+    }
+    await handlePlaySong(song);
+  };
+
   const selectedPlaylist = playlists.find((p) => p.id === selectedPlaylistId);
-  const currentlyPlayingSong = selectedPlaylist?.songs.find(
-    (song) => song.id === currentlyPlayingSongId,
-  );
+  // Find the currently playing song across playlists or the queue so bottom player
+  // works when playing tracks from the queue or other sources.
+  const currentlyPlayingSong =
+    playlists
+      .flatMap((p) => p.songs)
+      .find((song) => song.id === currentlyPlayingSongId) ||
+    queue.find((song) => song.id === currentlyPlayingSongId) ||
+    undefined;
   const [playbackProgress, setPlaybackProgress] = useState(0);
   const [playbackDuration, setPlaybackDuration] = useState(0);
 
@@ -562,9 +583,10 @@ const PlaylistsPage: React.FC = () => {
                                 className="song-image clickable"
                                 role="button"
                                 tabIndex={0}
-                                onClick={() => handlePlaySong(song)}
+                                onClick={() => ensureQueuedAndPlay(song)}
                                 onKeyDown={(e) => {
-                                  if (e.key === "Enter") handlePlaySong(song);
+                                  if (e.key === "Enter")
+                                    ensureQueuedAndPlay(song);
                                 }}
                                 aria-label={`Play ${song.title}`}
                               />
@@ -573,6 +595,18 @@ const PlaylistsPage: React.FC = () => {
                                 {song.artist}
                               </div>
                               <div className="song-action-buttons">
+                                <button
+                                  className="btn-add-queue"
+                                  onClick={() => {
+                                    enqueue(song);
+                                    addToast(`Queued "${song.title}"`, "info");
+                                  }}
+                                  title="Add to queue"
+                                  aria-label={`Add ${song.title} to queue`}
+                                >
+                                  Add to queue
+                                </button>
+
                                 <button
                                   className="btn-remove-song"
                                   onClick={() =>
@@ -605,9 +639,114 @@ const PlaylistsPage: React.FC = () => {
                   {/* Hidden audio element for playback */}
                   <audio
                     ref={audioRef}
-                    onEnded={handleAudioEnded}
+                    onEnded={() => {
+                      const currentIndex = queue.findIndex(
+                        (q) => q.id === currentlyPlayingSongId,
+                      );
+                      // TODO: optimize to avoid creating a new array every time. We can just remove the first item from the queue and play the next one.
+                      const newQueue = [...queue];
+                      if (currentIndex !== -1) newQueue.splice(currentIndex, 1);
+                      const next =
+                        newQueue.length > 0 ? newQueue[0] : undefined;
+
+                      if (currentIndex !== -1) removeAt(currentIndex);
+
+                      if (next) {
+                        handlePlaySong(next);
+                        addToast(`Now playing: ${next.title}`, "info");
+                      } else {
+                        handleAudioEnded();
+                      }
+                    }}
                     crossOrigin="anonymous"
                   />
+
+                  {/* Playback Queue Panel */}
+                  <div className="queue-panel mt-4">
+                    <h4 className="fs-6 mb-2">Up Next</h4>
+                    {queue.length === 0 ? (
+                      <p className="text-white-50 fs-7">Queue is empty</p>
+                    ) : (
+                      <div className="queue-list">
+                        {queue.map((qSong, qi) => (
+                          <div
+                            key={`${qSong.id}-${qi}`}
+                            className="queue-item d-flex align-items-center justify-content-between"
+                          >
+                            <div
+                              className="d-flex align-items-center gap-2 queue-play-target"
+                              role="button"
+                              tabIndex={0}
+                              onClick={(e) => {
+                                // avoid triggering when clicking control buttons
+                                const target = e.target as HTMLElement;
+                                if (target.closest(".queue-controls")) return;
+                                move(qi, 0);
+                                handlePlaySong(qSong);
+                                addToast(`Now playing: ${qSong.title}`, "info");
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  move(qi, 0);
+                                  handlePlaySong(qSong);
+                                  addToast(
+                                    `Now playing: ${qSong.title}`,
+                                    "info",
+                                  );
+                                }
+                              }}
+                            >
+                              <img
+                                src={qSong.image_url}
+                                alt={qSong.title}
+                                style={{
+                                  width: 48,
+                                  height: 48,
+                                  objectFit: "cover",
+                                }}
+                              />
+                              <div>
+                                <div className="queue-title">{qSong.title}</div>
+                                <div className="queue-artist text-white-50 fs-7">
+                                  {qSong.artist}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="queue-controls d-flex gap-2">
+                              {qi > 0 && (
+                                <button
+                                  className="btn-queue-move"
+                                  onClick={() => move(qi, qi - 1)}
+                                  title="Move up"
+                                  aria-label="Move up"
+                                >
+                                  <ArrowUp size={16} />
+                                </button>
+                              )}
+
+                              {qi < queue.length - 1 && (
+                                <button
+                                  className="btn-queue-move"
+                                  onClick={() => move(qi, qi + 1)}
+                                  title="Move down"
+                                  aria-label="Move down"
+                                >
+                                  <ArrowDown size={16} />
+                                </button>
+                              )}
+                              <button
+                                className="btn-remove-song"
+                                onClick={() => removeAt(qi)}
+                                title="Remove from queue"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
                   {/* Add Music Search and Suggestions */}
                   <div className="music-discovery-container">
@@ -659,13 +798,27 @@ const PlaylistsPage: React.FC = () => {
                                         {song.artist}
                                       </span>
                                     </div>
-                                    <button
-                                      className="btn-add-song"
-                                      onClick={() => handleAddSong(song)}
-                                      disabled={isAdded}
-                                    >
-                                      {isAdded ? "Added" : "Add to Playlist"}
-                                    </button>
+                                    <div className="discovery-actions">
+                                      <button
+                                        className="btn-add-song"
+                                        onClick={() => handleAddSong(song)}
+                                        disabled={isAdded}
+                                      >
+                                        {isAdded ? "Added" : "Add to Playlist"}
+                                      </button>
+                                      <button
+                                        className="btn-add-queue ms-2"
+                                        onClick={() => {
+                                          enqueue(song);
+                                          addToast(
+                                            `Queued "${song.title}"`,
+                                            "info",
+                                          );
+                                        }}
+                                      >
+                                        Add to queue
+                                      </button>
+                                    </div>
                                   </div>
                                 );
                               })
@@ -713,13 +866,27 @@ const PlaylistsPage: React.FC = () => {
                                         {song.artist}
                                       </span>
                                     </div>
-                                    <button
-                                      className="btn-add-song"
-                                      onClick={() => handleAddSong(song)}
-                                      disabled={isAdded}
-                                    >
-                                      {isAdded ? "Added" : "Add"}
-                                    </button>
+                                    <div className="discovery-actions">
+                                      <button
+                                        className="btn-add-song"
+                                        onClick={() => handleAddSong(song)}
+                                        disabled={isAdded}
+                                      >
+                                        {isAdded ? "Added" : "Add"}
+                                      </button>
+                                      <button
+                                        className="btn-add-queue ms-2"
+                                        onClick={() => {
+                                          enqueue(song);
+                                          addToast(
+                                            `Queued "${song.title}"`,
+                                            "info",
+                                          );
+                                        }}
+                                      >
+                                        Add to queue
+                                      </button>
+                                    </div>
                                   </div>
                                 );
                               })
@@ -927,17 +1094,73 @@ const PlaylistsPage: React.FC = () => {
                 </span>
               </div>
             </div>
-            <button
-              className="bottom-player-action"
-              onClick={() => handlePlaySong(currentlyPlayingSong)}
-              aria-label={isPlaying ? "Pause song" : "Play song"}
-            >
-              {isPlaying ? <Pause size={18} /> : <Play size={18} />}
-            </button>
+            <div className="bottom-player-controls d-flex align-items-center gap-2">
+              <button
+                className="bottom-player-action"
+                onClick={() => handlePlaySong(currentlyPlayingSong)}
+                aria-label={isPlaying ? "Pause song" : "Play song"}
+              >
+                {isPlaying ? <Pause size={18} /> : <Play size={18} />}
+              </button>
+
+              <button
+                className="btn-premium-outline"
+                onClick={() => {
+                  const audio = audioRef.current;
+                  if (!audio) return;
+                  const dur = audio.duration || 0;
+                  const seekTo = Math.max(dur - 5, 0);
+                  audio.currentTime = seekTo;
+                  // ensure playback continues
+                  if (!audio.paused) {
+                    // already playing
+                  } else if (currentlyPlayingSong) {
+                    handlePlaySong(currentlyPlayingSong);
+                  }
+                  addToast("Jumped near the end", "info");
+                }}
+                title="Finish soon"
+                aria-label="Finish soon"
+              >
+                <SkipForward size={14} />
+                <span className="ms-1">Finish</span>
+              </button>
+            </div>
           </div>
 
           <div className="bottom-player-progress">
-            <div className="bottom-player-progress-track">
+            <div
+              className="bottom-player-progress-track"
+              onClick={(e) => {
+                const audio = audioRef.current;
+                if (!audio) return;
+                const rect = (e.target as HTMLElement).getBoundingClientRect();
+                const clickX = (e as React.MouseEvent).clientX - rect.left;
+                const pct = Math.max(0, Math.min(1, clickX / rect.width));
+                const seekTo = (audio.duration || 0) * pct;
+                audio.currentTime = seekTo;
+                if (audio.paused && currentlyPlayingSong) {
+                  handlePlaySong(currentlyPlayingSong);
+                }
+              }}
+              role="slider"
+              aria-valuemin={0}
+              aria-valuemax={playbackDuration}
+              aria-valuenow={playbackProgress}
+              tabIndex={0}
+              onKeyDown={(e) => {
+                const audio = audioRef.current;
+                if (!audio) return;
+                if (e.key === "ArrowRight") {
+                  audio.currentTime = Math.min(
+                    audio.duration || 0,
+                    audio.currentTime + 5,
+                  );
+                } else if (e.key === "ArrowLeft") {
+                  audio.currentTime = Math.max(0, audio.currentTime - 5);
+                }
+              }}
+            >
               <div
                 className="bottom-player-progress-fill"
                 style={{
