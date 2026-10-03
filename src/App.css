@@ -68,11 +68,12 @@ img {
   height: auto;
 }
 
-.welcome-section {
-  background: linear-gradient(135deg, #09090b 0%, #1e1b4b 50%, #09090b 100%);
+/* ── Authenticated home hero (welcome copy + search share one block) ────── */
+.home-hero-section {
+  background: linear-gradient(180deg, #09090b 0%, #1e1b4b 55%, #0d0b1e 100%);
   color: white;
   padding-top: 100px !important;
-  padding-bottom: 60px !important;
+  padding-bottom: 80px !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -95,3 +96,182 @@ img {
   max-width: 600px;
   margin: 0 auto;
 }
+
+/* ── Home Search (nested inside .home-hero-section) ──────────────────────── */
+.home-search-wrap {
+  margin-top: 48px;
+}
+
+.home-search-inner {
+  max-width: 680px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.home-search-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #00c6ff;
+  margin-bottom: 16px;
+}
+
+.home-search-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.home-search-icon {
+  position: absolute;
+  left: 20px;
+  color: rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.home-search-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50px;
+  padding: 16px 52px 16px 54px;
+  color: #fff;
+  font-size: 1rem;
+  font-family: inherit;
+  transition: all 0.28s ease;
+  outline: none;
+}
+
+.home-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.home-search-input:focus {
+  border-color: #00c6ff;
+  background: rgba(0, 198, 255, 0.06);
+  box-shadow: 0 0 0 4px rgba(0, 198, 255, 0.1), 0 8px 30px rgba(0, 0, 0, 0.25);
+}
+
+.home-search-clear {
+  position: absolute;
+  right: 18px;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.home-search-clear:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+/* Results dropdown */
+.home-search-results {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  right: 0;
+  background: rgba(12, 8, 28, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  z-index: 500;
+  overflow: hidden;
+  max-height: 420px;
+  overflow-y: auto;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  animation: search-dropdown-in 0.18s ease;
+}
+
+@keyframes search-dropdown-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.home-search-loading,
+.home-search-empty {
+  padding: 20px 24px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.home-search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 20px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.home-search-result-item:last-child {
+  border-bottom: none;
+}
+
+.home-search-result-item:hover,
+.home-search-result-item:focus {
+  background: rgba(0, 198, 255, 0.07);
+  outline: none;
+}
+
+.home-result-art {
+  width: 46px;
+  height: 46px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.home-result-art-placeholder {
+  background: linear-gradient(135deg, #1e134a, #0d0726);
+}
+
+.home-result-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.home-result-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-result-artist {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Custom scrollbar inside dropdown */
+.home-search-results::-webkit-scrollbar {
+  width: 4px;
+}
+.home-search-results::-webkit-scrollbar-track {
+  background: transparent;
+}
+.home-search-results::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+}
+

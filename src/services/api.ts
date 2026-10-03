@@ -80,13 +80,10 @@ export interface Playlist {
   description?: string;
   songs: Song[];
   image_url?: string;
+  is_liked_songs?: boolean;
 }
 
-// interface PreferencesSaveResponse {
-//   message: string;
-//   count: number;
-//   preferences: PreferenceResponse[];
-// }
+// ─── Auth ────────────────────────────────────────────────────────────────────
 
 /**
  * Call the signup API endpoint
@@ -184,6 +181,8 @@ export const getCurrentUser = async (): Promise<UserProfile> => {
   }
 };
 
+// ─── Discovery ───────────────────────────────────────────────────────────────
+
 /**
  * Fetch all available genres
  */
@@ -275,10 +274,12 @@ export const saveUserPreferences = async (
   }
 };
 
+// ─── Streaming ───────────────────────────────────────────────────────────────
+
 /**
  * Stream a song and return a blob URL that can be used as an audio source
  */
-export const streamSongToBlobUrl = async (songId: string): Promise<string> => {
+export const streamSongToBlobUrl = async (songId: string): Promise<string | undefined> => {
   try {
     const authToken = localStorage.getItem("authToken");
     const response = await fetch(`${API_BASE_URL}/songs/${songId}/stream`, {
@@ -307,40 +308,6 @@ export const streamSongToBlobUrl = async (songId: string): Promise<string> => {
     return url;
   } catch (error) {
     console.error("Error streaming song:", error);
-  }
-};
-/* Fetch user playlists from the backend
- */
-export const getUserPlaylists = async (): Promise<Playlist[]> => {
-  try {
-    const authToken = localStorage.getItem("authToken");
-    const response = await fetch(`${API_BASE_URL}/playlists`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${authToken}`,
-      },
-    });
-
-    const data = await response.json();
-
-    if (response.status === 401) {
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("user");
-      window.location.href = "/signin";
-      throw new Error("Session expired. Please sign in again.");
-    }
-
-    if (!response.ok) {
-      throw new Error(
-        data.message || data.detail || "Failed to fetch playlists",
-      );
-    }
-
-    return Array.isArray(data) ? data : data.playlists || [];
-  } catch (error) {
-    console.error("Error fetching playlists:", error);
-    throw error instanceof Error ? error : new Error("An error occurred");
   }
 };
 
@@ -401,7 +368,47 @@ export const fetchSongRange = async (
     throw error instanceof Error ? error : new Error("An error occurred");
   }
 };
-/* Create a new playlist via backend
+
+// ─── Playlists ────────────────────────────────────────────────────────────────
+
+/**
+ * Fetch user playlists from the backend
+ */
+export const getUserPlaylists = async (): Promise<Playlist[]> => {
+  try {
+    const authToken = localStorage.getItem("authToken");
+    const response = await fetch(`${API_BASE_URL}/playlists`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (response.status === 401) {
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("user");
+      window.location.href = "/signin";
+      throw new Error("Session expired. Please sign in again.");
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || data.detail || "Failed to fetch playlists",
+      );
+    }
+
+    return Array.isArray(data) ? data : data.playlists || [];
+  } catch (error) {
+    console.error("Error fetching playlists:", error);
+    throw error instanceof Error ? error : new Error("An error occurred");
+  }
+};
+
+/**
+ * Create a new playlist via backend
  */
 export const createPlaylist = async (
   name: string,
@@ -501,71 +508,6 @@ export const removeSongFromPlaylist = async (
 };
 
 /**
- * Search for songs/artists using backend
- */
-export const searchSongs = async (query: string): Promise<Song[]> => {
-  try {
-    if (!query.trim()) return [];
-    const response = await fetch(
-      `${API_BASE_URL}/songs/search?query=${encodeURIComponent(query)}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      },
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || data.detail || "Failed to search songs");
-    }
-
-    return Array.isArray(data) ? data : data.songs || [];
-  } catch (error) {
-    console.error("Error searching songs:", error);
-    throw error instanceof Error ? error : new Error("An error occurred");
-  }
-};
-
-/**
- * Get suggested songs based on preferences from backend
- */
-export const getSuggestedSongs = async (): Promise<Song[]> => {
-  try {
-    const authToken = localStorage.getItem("authToken");
-    const response = await fetch(`${API_BASE_URL}/songs/suggestions`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${authToken}`,
-      },
-    });
-
-    const data = await response.json();
-
-    if (response.status === 401) {
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("user");
-      window.location.href = "/signin";
-      throw new Error("Session expired. Please sign in again.");
-    }
-
-    if (!response.ok) {
-      throw new Error(
-        data.message || data.detail || "Failed to fetch suggestions",
-      );
-    }
-
-    return Array.isArray(data) ? data : data.suggestions || [];
-  } catch (error) {
-    console.error("Error fetching suggestions:", error);
-    throw error instanceof Error ? error : new Error("An error occurred");
-  }
-};
-
-/**
  * Rename/update a playlist via backend
  */
 export const renamePlaylist = async (
@@ -632,6 +574,115 @@ export const deletePlaylist = async (playlistId: string): Promise<void> => {
     }
   } catch (error) {
     console.error("Error deleting playlist:", error);
+    throw error instanceof Error ? error : new Error("An error occurred");
+  }
+};
+
+// ─── Liked Songs ─────────────────────────────────────────────────────────────
+
+/**
+ * Get or auto-create the current user's Liked Songs playlist.
+ * Returns the playlist object (with id needed for subsequent like/unlike calls).
+ */
+export const getLikedSongsPlaylist = async (): Promise<Playlist> => {
+  const authToken = localStorage.getItem("authToken");
+  const response = await fetch(`${API_BASE_URL}/playlists/liked-songs`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${authToken}`,
+    },
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(
+      data.detail || data.message || "Failed to load Liked Songs playlist",
+    );
+  }
+  return response.json();
+};
+
+/**
+ * Return the list of song IDs the current user has liked.
+ */
+export const getLikedSongIds = async (): Promise<string[]> => {
+  const authToken = localStorage.getItem("authToken");
+  const response = await fetch(
+    `${API_BASE_URL}/playlists/liked-songs/song-ids`,
+    {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+    },
+  );
+  if (!response.ok) return [];
+  return response.json();
+};
+
+// ─── Songs search / suggestions ──────────────────────────────────────────────
+
+/**
+ * Search for songs/artists using backend
+ */
+export const searchSongs = async (query: string): Promise<Song[]> => {
+  try {
+    if (!query.trim()) return [];
+    const response = await fetch(
+      `${API_BASE_URL}/songs/search?query=${encodeURIComponent(query)}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || data.detail || "Failed to search songs");
+    }
+
+    return Array.isArray(data) ? data : data.songs || [];
+  } catch (error) {
+    console.error("Error searching songs:", error);
+    throw error instanceof Error ? error : new Error("An error occurred");
+  }
+};
+
+/**
+ * Get suggested songs based on preferences from backend
+ */
+export const getSuggestedSongs = async (): Promise<Song[]> => {
+  try {
+    const authToken = localStorage.getItem("authToken");
+    const response = await fetch(`${API_BASE_URL}/songs/suggestions`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (response.status === 401) {
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("user");
+      window.location.href = "/signin";
+      throw new Error("Session expired. Please sign in again.");
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || data.detail || "Failed to fetch suggestions",
+      );
+    }
+
+    return Array.isArray(data) ? data : data.suggestions || [];
+  } catch (error) {
+    console.error("Error fetching suggestions:", error);
     throw error instanceof Error ? error : new Error("An error occurred");
   }
 };

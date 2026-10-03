@@ -47,6 +47,7 @@ export default function PopularSingers() {
   return (
     <section className="popular-singers">
       <Container>
+        <p className="singers-eyebrow">Featured artists</p>
         <h2 className="singers-title">Popular Singers</h2>
 
         <Row className="singers-grid">

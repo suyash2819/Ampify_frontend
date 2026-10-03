@@ -12,11 +12,9 @@ import {
   Sparkles,
   AlertTriangle,
   ArrowLeft,
-  Play,
-  Pause,
   ArrowUp,
   ArrowDown,
-  SkipForward,
+  Heart,
 } from "lucide-react";
 import {
   getUserPlaylists,
@@ -30,8 +28,9 @@ import {
   Playlist,
   Song,
 } from "../services/api";
-import { useAudioStreaming } from "../hooks/useAudioStreaming";
-import { usePlaybackQueue } from "../context/PlaybackQueueContext";
+import { usePlayback } from "../context/PlaybackContext";
+import { useLikedSongs } from "../context/LikedSongsContext";
+import SongDetailsModal from "../components/SongDetailsModal";
 import "./PlaylistsPage.css";
 
 interface Toast {
@@ -52,6 +51,9 @@ const PlaylistsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Song[]>([]);
   const [suggestions, setSuggestions] = useState<Song[]>([]);
+
+  // Song details modal
+  const [modalSong, setModalSong] = useState<Song | null>(null);
 
   // Modal toggle states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -75,6 +77,10 @@ const PlaylistsPage: React.FC = () => {
   // Toast notifications state
   const [toasts, setToasts] = useState<Toast[]>([]);
 
+  // Liked songs context — the source of truth for the Liked Songs playlist's contents,
+  // since liking/unliking a song anywhere in the app updates it immediately.
+  const { isLiked, toggleLike, likedPlaylist } = useLikedSongs();
+
   // Helper to trigger toast notification
   const addToast = (message: string, type: Toast["type"]) => {
     const id = Math.random().toString(36).substring(2, 9);
@@ -88,41 +94,20 @@ const PlaylistsPage: React.FC = () => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // Audio streaming hook
-  const {
-    audioRef,
-    currentlyPlayingSongId,
-    isPlaying,
-    handlePlaySong,
-    handleAudioEnded,
-  } = useAudioStreaming(
-    (error) => addToast(error, "error"),
-    (message) => addToast(message, "info"),
+  // Global playback state (shared across the whole app so playback survives navigation)
+  const { currentSong, playSong, queue, enqueue, removeAt, move } =
+    usePlayback();
+  const currentlyPlayingSongId = currentSong?.id ?? null;
+
+  // Patch in the live Liked Songs contents from context so likes/unlikes made
+  // anywhere (search modal, bottom bar, this page) show up here without a refetch.
+  const displayPlaylists = playlists.map((p) =>
+    p.is_liked_songs && likedPlaylist ? { ...p, songs: likedPlaylist.songs } : p,
   );
 
-  const { queue, enqueue, removeAt, move, dequeue } = usePlaybackQueue();
-
-  const ensureQueuedAndPlay = async (song: Song) => {
-    if (!song) return;
-    // If starting a new song and the queue was empty, create a new queue with this song.
-    if (currentlyPlayingSongId !== song.id && queue.length === 0) {
-      const already = queue.some((q) => q.id === song.id);
-      if (!already) enqueue(song);
-    }
-    await handlePlaySong(song);
-  };
-
-  const selectedPlaylist = playlists.find((p) => p.id === selectedPlaylistId);
-  // Find the currently playing song across playlists or the queue so bottom player
-  // works when playing tracks from the queue or other sources.
-  const currentlyPlayingSong =
-    playlists
-      .flatMap((p) => p.songs)
-      .find((song) => song.id === currentlyPlayingSongId) ||
-    queue.find((song) => song.id === currentlyPlayingSongId) ||
-    undefined;
-  const [playbackProgress, setPlaybackProgress] = useState(0);
-  const [playbackDuration, setPlaybackDuration] = useState(0);
+  const selectedPlaylist = displayPlaylists.find(
+    (p) => p.id === selectedPlaylistId,
+  );
 
   // Responsive listener
   useEffect(() => {
@@ -136,50 +121,6 @@ const PlaylistsPage: React.FC = () => {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
-
-  // Track playback progress for the bottom player bar.
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const updatePlaybackState = () => {
-      setPlaybackProgress(audio.currentTime);
-      setPlaybackDuration(audio.duration || 0);
-    };
-
-    // Poll the audio position frequently to ensure the progress bar moves smoothly.
-    const intervalId = window.setInterval(() => {
-      if (!audio.paused && !audio.ended) {
-        updatePlaybackState();
-      }
-    }, 100);
-
-    audio.addEventListener("timeupdate", updatePlaybackState);
-    audio.addEventListener("loadedmetadata", updatePlaybackState);
-    audio.addEventListener("durationchange", updatePlaybackState);
-    audio.addEventListener("play", updatePlaybackState);
-    audio.addEventListener("playing", updatePlaybackState);
-    audio.addEventListener("pause", updatePlaybackState);
-    audio.addEventListener("ended", updatePlaybackState);
-
-    updatePlaybackState();
-
-    return () => {
-      window.clearInterval(intervalId);
-      audio.removeEventListener("timeupdate", updatePlaybackState);
-      audio.removeEventListener("loadedmetadata", updatePlaybackState);
-      audio.removeEventListener("durationchange", updatePlaybackState);
-      audio.removeEventListener("play", updatePlaybackState);
-      audio.removeEventListener("playing", updatePlaybackState);
-      audio.removeEventListener("pause", updatePlaybackState);
-      audio.removeEventListener("ended", updatePlaybackState);
-    };
-  }, [audioRef, currentlyPlayingSongId]);
-
-  useEffect(() => {
-    setPlaybackProgress(0);
-    setPlaybackDuration(0);
-  }, [currentlyPlayingSongId]);
 
   // Fetch initial data
   useEffect(() => {
@@ -324,31 +265,40 @@ const PlaylistsPage: React.FC = () => {
     }
   };
 
+  // Create a playlist from the song details modal's "Add to playlist" menu
+  const handleCreatePlaylistInline = async (name: string): Promise<Playlist> => {
+    const created = await createPlaylist(name);
+    setPlaylists((prev) => [created, ...prev]);
+    addToast(`Playlist "${created.name}" created successfully!`, "success");
+    return created;
+  };
+
   // Add song to playlist (with duplicate check)
-  const handleAddSong = async (song: Song) => {
-    if (!selectedPlaylistId) {
+  const handleAddSong = async (song: Song, targetPlaylist?: Playlist) => {
+    const target = targetPlaylist || selectedPlaylist;
+    if (!target) {
       addToast("Please select or create a playlist first", "warning");
       return;
     }
 
     // Check if song already exists (duplicate prevention)
-    const alreadyExists = selectedPlaylist?.songs.some((s) => s.id === song.id);
+    const alreadyExists = target.songs.some((s) => s.id === song.id);
     if (alreadyExists) {
       addToast(`"${song.title}" is already in this playlist`, "warning");
       return;
     }
 
     try {
-      await addSongToPlaylist(selectedPlaylistId, song);
+      await addSongToPlaylist(target.id, song);
       setPlaylists((prev) =>
         prev.map((p) => {
-          if (p.id === selectedPlaylistId) {
+          if (p.id === target.id) {
             return { ...p, songs: [...p.songs, song] };
           }
           return p;
         }),
       );
-      addToast(`Added "${song.title}" to playlist`, "success");
+      addToast(`Added "${song.title}" to "${target.name}"`, "success");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to add song";
       addToast(message || "Failed to add song", "error");
@@ -376,8 +326,19 @@ const PlaylistsPage: React.FC = () => {
     }
   };
 
-  // Filter playlists in sidebar
-  const filteredPlaylists = playlists.filter((p) =>
+  // Handle like toggle with toast feedback
+  const handleToggleLike = async (song: Song) => {
+    const wasLiked = isLiked(song.id);
+    await toggleLike(song);
+    if (wasLiked) {
+      addToast(`Removed "${song.title}" from Liked Songs`, "info");
+    } else {
+      addToast(`Added "${song.title}" to Liked Songs ❤️`, "success");
+    }
+  };
+
+  // Filter playlists in sidebar (include all — liked songs shown first due to backend ordering)
+  const filteredPlaylists = displayPlaylists.filter((p) =>
     p.name.toLowerCase().includes(playlistFilterQuery.toLowerCase()),
   );
 
@@ -419,7 +380,7 @@ const PlaylistsPage: React.FC = () => {
           {(!isMobile || mobileView === "list") && (
             <div className="playlists-sidebar">
               <div className="sidebar-header">
-                <span className="sidebar-title">Your Playlists</span>
+                <span className="sidebar-title">Your Library</span>
                 <button
                   className="btn-create-playlist"
                   onClick={() => setIsCreateModalOpen(true)}
@@ -447,7 +408,7 @@ const PlaylistsPage: React.FC = () => {
                   filteredPlaylists.map((playlist) => (
                     <div
                       key={playlist.id}
-                      className={`playlist-list-item ${selectedPlaylistId === playlist.id ? "active" : ""}`}
+                      className={`playlist-list-item ${selectedPlaylistId === playlist.id ? "active" : ""} ${playlist.is_liked_songs ? "liked-songs-item" : ""}`}
                       onClick={() => {
                         setSelectedPlaylistId(playlist.id);
                         if (isMobile) {
@@ -455,14 +416,20 @@ const PlaylistsPage: React.FC = () => {
                         }
                       }}
                     >
-                      <img
-                        src={
-                          playlist.image_url ||
-                          "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=150&auto=format&fit=crop&q=60"
-                        }
-                        alt={playlist.name}
-                        className="mini-art"
-                      />
+                      {playlist.is_liked_songs ? (
+                        <div className="mini-art liked-songs-mini-art">
+                          <Heart size={22} fill="currentColor" />
+                        </div>
+                      ) : (
+                        <img
+                          src={
+                            playlist.image_url ||
+                            "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=150&auto=format&fit=crop&q=60"
+                          }
+                          alt={playlist.name}
+                          className="mini-art"
+                        />
+                      )}
                       <div className="item-details">
                         <h4 className="item-name">{playlist.name}</h4>
                         <p className="item-count">
@@ -509,16 +476,26 @@ const PlaylistsPage: React.FC = () => {
                   <div className="playlist-detail-card">
                     <div className="detail-hero-section">
                       <div className="large-art-container">
-                        <img
-                          src={
-                            selectedPlaylist.image_url ||
-                            "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=60"
-                          }
-                          alt={selectedPlaylist.name}
-                        />
+                        {selectedPlaylist.is_liked_songs ? (
+                          <div className="liked-songs-art-large">
+                            <Heart size={64} fill="currentColor" />
+                          </div>
+                        ) : (
+                          <img
+                            src={
+                              selectedPlaylist.image_url ||
+                              "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=60"
+                            }
+                            alt={selectedPlaylist.name}
+                          />
+                        )}
                       </div>
                       <div className="detail-info">
-                        <span className="badge-playlist">Playlist</span>
+                        <span className="badge-playlist">
+                          {selectedPlaylist.is_liked_songs
+                            ? "❤️ Liked Songs"
+                            : "Playlist"}
+                        </span>
                         <h2 className="playlist-title-header">
                           {selectedPlaylist.name}
                         </h2>
@@ -537,22 +514,25 @@ const PlaylistsPage: React.FC = () => {
                               : "songs"}
                           </span>
                         </div>
-                        <div className="action-buttons-group">
-                          <button
-                            className="btn-premium-outline"
-                            onClick={openRenameModal}
-                          >
-                            <Edit2 size={16} />
-                            Edit Details
-                          </button>
-                          <button
-                            className="btn-premium-danger-outline"
-                            onClick={() => setIsDeleteModalOpen(true)}
-                          >
-                            <Trash2 size={16} />
-                            Delete Playlist
-                          </button>
-                        </div>
+                        {/* Hide Edit/Delete for Liked Songs */}
+                        {!selectedPlaylist.is_liked_songs && (
+                          <div className="action-buttons-group">
+                            <button
+                              className="btn-premium-outline"
+                              onClick={openRenameModal}
+                            >
+                              <Edit2 size={16} />
+                              Edit Details
+                            </button>
+                            <button
+                              className="btn-premium-danger-outline"
+                              onClick={() => setIsDeleteModalOpen(true)}
+                            >
+                              <Trash2 size={16} />
+                              Delete Playlist
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -583,18 +563,52 @@ const PlaylistsPage: React.FC = () => {
                                 className="song-image clickable"
                                 role="button"
                                 tabIndex={0}
-                                onClick={() => ensureQueuedAndPlay(song)}
+                                onClick={() => setModalSong(song)}
                                 onKeyDown={(e) => {
-                                  if (e.key === "Enter")
-                                    ensureQueuedAndPlay(song);
+                                  if (e.key === "Enter") setModalSong(song);
                                 }}
-                                aria-label={`Play ${song.title}`}
+                                aria-label={`View details for ${song.title}`}
                               />
-                              <div className="song-title-col">{song.title}</div>
+                              <div
+                                className="song-title-col clickable-title"
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => setModalSong(song)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") setModalSong(song);
+                                }}
+                                aria-label={`View details for ${song.title}`}
+                              >
+                                {song.title}
+                              </div>
                               <div className="song-artist-col">
                                 {song.artist}
                               </div>
                               <div className="song-action-buttons">
+                                {/* Like button */}
+                                <button
+                                  className={`btn-like-song${isLiked(song.id) ? " liked" : ""}`}
+                                  onClick={() => handleToggleLike(song)}
+                                  title={
+                                    isLiked(song.id) ? "Unlike" : "Like song"
+                                  }
+                                  aria-label={
+                                    isLiked(song.id)
+                                      ? `Unlike ${song.title}`
+                                      : `Like ${song.title}`
+                                  }
+                                  aria-pressed={isLiked(song.id)}
+                                >
+                                  <Heart
+                                    size={15}
+                                    fill={
+                                      isLiked(song.id)
+                                        ? "currentColor"
+                                        : "none"
+                                    }
+                                  />
+                                </button>
+
                                 <button
                                   className="btn-add-queue"
                                   onClick={() => {
@@ -607,16 +621,18 @@ const PlaylistsPage: React.FC = () => {
                                   Add to queue
                                 </button>
 
-                                <button
-                                  className="btn-remove-song"
-                                  onClick={() =>
-                                    handleRemoveSong(song.id, song.title)
-                                  }
-                                  title="Remove song from playlist"
-                                  aria-label={`Remove ${song.title} from playlist`}
-                                >
-                                  <Trash2 size={15} />
-                                </button>
+                                {!selectedPlaylist.is_liked_songs && (
+                                  <button
+                                    className="btn-remove-song"
+                                    onClick={() =>
+                                      handleRemoveSong(song.id, song.title)
+                                    }
+                                    title="Remove song from playlist"
+                                    aria-label={`Remove ${song.title} from playlist`}
+                                  >
+                                    <Trash2 size={15} />
+                                  </button>
+                                )}
                               </div>
                             </div>
                           ))
@@ -624,42 +640,20 @@ const PlaylistsPage: React.FC = () => {
                           <div className="empty-state-box py-5">
                             <Music size={40} />
                             <p className="empty-state-title">
-                              This playlist is empty
+                              {selectedPlaylist.is_liked_songs
+                                ? "No liked songs yet"
+                                : "This playlist is empty"}
                             </p>
                             <p className="empty-state-subtitle">
-                              Search for songs below to add them to your
-                              playlist.
+                              {selectedPlaylist.is_liked_songs
+                                ? "Heart a song to save it here."
+                                : "Search for songs below to add them to your playlist."}
                             </p>
                           </div>
                         )}
                       </div>
                     </div>
                   </div>
-
-                  {/* Hidden audio element for playback */}
-                  <audio
-                    ref={audioRef}
-                    onEnded={() => {
-                      const currentIndex = queue.findIndex(
-                        (q) => q.id === currentlyPlayingSongId,
-                      );
-                      // TODO: optimize to avoid creating a new array every time. We can just remove the first item from the queue and play the next one.
-                      const newQueue = [...queue];
-                      if (currentIndex !== -1) newQueue.splice(currentIndex, 1);
-                      const next =
-                        newQueue.length > 0 ? newQueue[0] : undefined;
-
-                      if (currentIndex !== -1) removeAt(currentIndex);
-
-                      if (next) {
-                        handlePlaySong(next);
-                        addToast(`Now playing: ${next.title}`, "info");
-                      } else {
-                        handleAudioEnded();
-                      }
-                    }}
-                    crossOrigin="anonymous"
-                  />
 
                   {/* Playback Queue Panel */}
                   <div className="queue-panel mt-4">
@@ -682,13 +676,13 @@ const PlaylistsPage: React.FC = () => {
                                 const target = e.target as HTMLElement;
                                 if (target.closest(".queue-controls")) return;
                                 move(qi, 0);
-                                handlePlaySong(qSong);
+                                playSong(qSong);
                                 addToast(`Now playing: ${qSong.title}`, "info");
                               }}
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") {
                                   move(qi, 0);
-                                  handlePlaySong(qSong);
+                                  playSong(qSong);
                                   addToast(
                                     `Now playing: ${qSong.title}`,
                                     "info",
@@ -748,158 +742,250 @@ const PlaylistsPage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Add Music Search and Suggestions */}
-                  <div className="music-discovery-container">
-                    <h3 className="discovery-section-title">
-                      Add songs to this playlist
-                    </h3>
+                  {/* Add Music Search and Suggestions — hide for Liked Songs */}
+                  {!selectedPlaylist.is_liked_songs && (
+                    <div className="music-discovery-container">
+                      <h3 className="discovery-section-title">
+                        Add songs to this playlist
+                      </h3>
 
-                    <div className="row">
-                      {/* Search for songs */}
-                      <div className="col-lg-7 mb-4 mb-lg-0">
-                        <div className="pe-lg-4">
-                          <h4 className="fs-6 fw-bold mb-3 text-white-50">
-                            Search for tracks
-                          </h4>
-                          <div className="discovery-search-wrapper">
-                            <Search
-                              size={18}
-                              className="discovery-search-icon"
-                            />
-                            <input
-                              type="text"
-                              className="discovery-search-input"
-                              placeholder="Search by song name or artist..."
-                              value={searchQuery}
-                              onChange={handleSearch}
-                            />
-                          </div>
+                      <div className="row">
+                        {/* Search for songs */}
+                        <div className="col-lg-7 mb-4 mb-lg-0">
+                          <div className="pe-lg-4">
+                            <h4 className="fs-6 fw-bold mb-3 text-white-50">
+                              Search for tracks
+                            </h4>
+                            <div className="discovery-search-wrapper">
+                              <Search
+                                size={18}
+                                className="discovery-search-icon"
+                              />
+                              <input
+                                type="text"
+                                className="discovery-search-input"
+                                placeholder="Search by song name or artist..."
+                                value={searchQuery}
+                                onChange={handleSearch}
+                              />
+                            </div>
 
-                          <div className="search-results-list">
-                            {searchResults.length > 0 ? (
-                              searchResults.map((song) => {
-                                const isAdded = selectedPlaylist.songs.some(
-                                  (s) => s.id === song.id,
-                                );
-                                return (
-                                  <div
-                                    key={song.id}
-                                    className="discovery-song-item"
-                                  >
-                                    <img
-                                      src={song.image_url}
-                                      alt={song.title}
-                                    />
-                                    <div className="discovery-song-details">
-                                      <span className="discovery-song-title">
-                                        {song.title}
-                                      </span>
-                                      <span className="discovery-song-artist">
-                                        {song.artist}
-                                      </span>
-                                    </div>
-                                    <div className="discovery-actions">
-                                      <button
-                                        className="btn-add-song"
-                                        onClick={() => handleAddSong(song)}
-                                        disabled={isAdded}
-                                      >
-                                        {isAdded ? "Added" : "Add to Playlist"}
-                                      </button>
-                                      <button
-                                        className="btn-add-queue ms-2"
-                                        onClick={() => {
-                                          enqueue(song);
-                                          addToast(
-                                            `Queued "${song.title}"`,
-                                            "info",
-                                          );
+                            <div className="search-results-list">
+                              {searchResults.length > 0 ? (
+                                searchResults.map((song) => {
+                                  const isAdded = selectedPlaylist.songs.some(
+                                    (s) => s.id === song.id,
+                                  );
+                                  return (
+                                    <div
+                                      key={song.id}
+                                      className="discovery-song-item"
+                                    >
+                                      <img
+                                        src={song.image_url}
+                                        alt={song.title}
+                                        className="clickable"
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={() => setModalSong(song)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter")
+                                            setModalSong(song);
                                         }}
-                                      >
-                                        Add to queue
-                                      </button>
+                                        aria-label={`View ${song.title} details`}
+                                        style={{ cursor: "pointer" }}
+                                      />
+                                      <div className="discovery-song-details">
+                                        <span
+                                          className="discovery-song-title clickable-title"
+                                          role="button"
+                                          tabIndex={0}
+                                          onClick={() => setModalSong(song)}
+                                          onKeyDown={(e) => {
+                                            if (e.key === "Enter")
+                                              setModalSong(song);
+                                          }}
+                                        >
+                                          {song.title}
+                                        </span>
+                                        <span className="discovery-song-artist">
+                                          {song.artist}
+                                        </span>
+                                      </div>
+                                      <div className="discovery-actions">
+                                        <button
+                                          className={`btn-like-song${isLiked(song.id) ? " liked" : ""}`}
+                                          onClick={() =>
+                                            handleToggleLike(song)
+                                          }
+                                          title={
+                                            isLiked(song.id)
+                                              ? "Unlike"
+                                              : "Like"
+                                          }
+                                          aria-label={
+                                            isLiked(song.id)
+                                              ? `Unlike ${song.title}`
+                                              : `Like ${song.title}`
+                                          }
+                                        >
+                                          <Heart
+                                            size={15}
+                                            fill={
+                                              isLiked(song.id)
+                                                ? "currentColor"
+                                                : "none"
+                                            }
+                                          />
+                                        </button>
+                                        <button
+                                          className="btn-add-song"
+                                          onClick={() => handleAddSong(song)}
+                                          disabled={isAdded}
+                                        >
+                                          {isAdded
+                                            ? "Added"
+                                            : "Add to Playlist"}
+                                        </button>
+                                        <button
+                                          className="btn-add-queue ms-2"
+                                          onClick={() => {
+                                            enqueue(song);
+                                            addToast(
+                                              `Queued "${song.title}"`,
+                                              "info",
+                                            );
+                                          }}
+                                        >
+                                          Add to queue
+                                        </button>
+                                      </div>
                                     </div>
-                                  </div>
-                                );
-                              })
-                            ) : searchQuery.trim() ? (
-                              <p className="text-white-50 fs-7 italic py-2">
-                                No matches found for "{searchQuery}"
-                              </p>
-                            ) : (
-                              <p className="text-white-50 fs-7 italic py-2">
-                                Type above to search Ampify's library
-                              </p>
-                            )}
+                                  );
+                                })
+                              ) : searchQuery.trim() ? (
+                                <p className="text-white-50 fs-7 italic py-2">
+                                  No matches found for "{searchQuery}"
+                                </p>
+                              ) : (
+                                <p className="text-white-50 fs-7 italic py-2">
+                                  Type above to search Ampify's library
+                                </p>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Suggested Songs */}
-                      <div className="col-lg-5">
-                        <div>
-                          <h4 className="fs-6 fw-bold mb-3 text-white-50 d-flex align-items-center gap-2">
-                            <Sparkles size={16} className="text-info" />
-                            Recommended for you
-                          </h4>
+                        {/* Suggested Songs */}
+                        <div className="col-lg-5">
+                          <div>
+                            <h4 className="fs-6 fw-bold mb-3 text-white-50 d-flex align-items-center gap-2">
+                              <Sparkles size={16} className="text-info" />
+                              Recommended for you
+                            </h4>
 
-                          <div className="suggestions-list">
-                            {suggestions.length > 0 ? (
-                              suggestions.map((song) => {
-                                const isAdded = selectedPlaylist.songs.some(
-                                  (s) => s.id === song.id,
-                                );
-                                return (
-                                  <div
-                                    key={song.id}
-                                    className="discovery-song-item"
-                                  >
-                                    <img
-                                      src={song.image_url}
-                                      alt={song.title}
-                                    />
-                                    <div className="discovery-song-details">
-                                      <span className="discovery-song-title">
-                                        {song.title}
-                                      </span>
-                                      <span className="discovery-song-artist">
-                                        {song.artist}
-                                      </span>
-                                    </div>
-                                    <div className="discovery-actions">
-                                      <button
-                                        className="btn-add-song"
-                                        onClick={() => handleAddSong(song)}
-                                        disabled={isAdded}
-                                      >
-                                        {isAdded ? "Added" : "Add"}
-                                      </button>
-                                      <button
-                                        className="btn-add-queue ms-2"
-                                        onClick={() => {
-                                          enqueue(song);
-                                          addToast(
-                                            `Queued "${song.title}"`,
-                                            "info",
-                                          );
+                            <div className="suggestions-list">
+                              {suggestions.length > 0 ? (
+                                suggestions.map((song) => {
+                                  const isAdded = selectedPlaylist.songs.some(
+                                    (s) => s.id === song.id,
+                                  );
+                                  return (
+                                    <div
+                                      key={song.id}
+                                      className="discovery-song-item"
+                                    >
+                                      <img
+                                        src={song.image_url}
+                                        alt={song.title}
+                                        className="clickable"
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={() => setModalSong(song)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter")
+                                            setModalSong(song);
                                         }}
-                                      >
-                                        Add to queue
-                                      </button>
+                                        aria-label={`View ${song.title} details`}
+                                        style={{ cursor: "pointer" }}
+                                      />
+                                      <div className="discovery-song-details">
+                                        <span
+                                          className="discovery-song-title clickable-title"
+                                          role="button"
+                                          tabIndex={0}
+                                          onClick={() => setModalSong(song)}
+                                          onKeyDown={(e) => {
+                                            if (e.key === "Enter")
+                                              setModalSong(song);
+                                          }}
+                                        >
+                                          {song.title}
+                                        </span>
+                                        <span className="discovery-song-artist">
+                                          {song.artist}
+                                        </span>
+                                      </div>
+                                      <div className="discovery-actions">
+                                        <button
+                                          className={`btn-like-song${isLiked(song.id) ? " liked" : ""}`}
+                                          onClick={() =>
+                                            handleToggleLike(song)
+                                          }
+                                          title={
+                                            isLiked(song.id)
+                                              ? "Unlike"
+                                              : "Like"
+                                          }
+                                          aria-label={
+                                            isLiked(song.id)
+                                              ? `Unlike ${song.title}`
+                                              : `Like ${song.title}`
+                                          }
+                                        >
+                                          <Heart
+                                            size={15}
+                                            fill={
+                                              isLiked(song.id)
+                                                ? "currentColor"
+                                                : "none"
+                                            }
+                                          />
+                                        </button>
+                                        <button
+                                          className="btn-add-song"
+                                          onClick={() => handleAddSong(song)}
+                                          disabled={isAdded}
+                                        >
+                                          {isAdded ? "Added" : "Add"}
+                                        </button>
+                                        <button
+                                          className="btn-add-queue ms-2"
+                                          onClick={() => {
+                                            enqueue(song);
+                                            addToast(
+                                              `Queued "${song.title}"`,
+                                              "info",
+                                            );
+                                          }}
+                                        >
+                                          Add to queue
+                                        </button>
+                                      </div>
                                     </div>
-                                  </div>
-                                );
-                              })
-                            ) : (
-                              <p className="text-white-50 fs-7 py-2">
-                                No recommendations available
-                              </p>
-                            )}
+                                  );
+                                })
+                              ) : (
+                                <p className="text-white-50 fs-7 py-2">
+                                  No recommendations available
+                                </p>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </>
               ) : (
                 <div className="empty-state-box py-5">
@@ -1073,108 +1159,6 @@ const PlaylistsPage: React.FC = () => {
         </div>
       )}
 
-      {currentlyPlayingSongId && currentlyPlayingSong && (
-        <div className="bottom-player-bar">
-          <div className="bottom-player-inner">
-            <div className="bottom-player-left">
-              <img
-                src={
-                  currentlyPlayingSong.image_url ||
-                  "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=100&auto=format&fit=crop&q=60"
-                }
-                alt={currentlyPlayingSong.title}
-                className="bottom-player-poster"
-              />
-              <div className="bottom-player-meta">
-                <span className="bottom-player-title">
-                  {currentlyPlayingSong.title}
-                </span>
-                <span className="bottom-player-artist">
-                  {currentlyPlayingSong.artist}
-                </span>
-              </div>
-            </div>
-            <div className="bottom-player-controls d-flex align-items-center gap-2">
-              <button
-                className="bottom-player-action"
-                onClick={() => handlePlaySong(currentlyPlayingSong)}
-                aria-label={isPlaying ? "Pause song" : "Play song"}
-              >
-                {isPlaying ? <Pause size={18} /> : <Play size={18} />}
-              </button>
-
-              <button
-                className="btn-premium-outline"
-                onClick={() => {
-                  const audio = audioRef.current;
-                  if (!audio) return;
-                  const dur = audio.duration || 0;
-                  const seekTo = Math.max(dur - 5, 0);
-                  audio.currentTime = seekTo;
-                  // ensure playback continues
-                  if (!audio.paused) {
-                    // already playing
-                  } else if (currentlyPlayingSong) {
-                    handlePlaySong(currentlyPlayingSong);
-                  }
-                  addToast("Jumped near the end", "info");
-                }}
-                title="Finish soon"
-                aria-label="Finish soon"
-              >
-                <SkipForward size={14} />
-                <span className="ms-1">Finish</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="bottom-player-progress">
-            <div
-              className="bottom-player-progress-track"
-              onClick={(e) => {
-                const audio = audioRef.current;
-                if (!audio) return;
-                const rect = (e.target as HTMLElement).getBoundingClientRect();
-                const clickX = (e as React.MouseEvent).clientX - rect.left;
-                const pct = Math.max(0, Math.min(1, clickX / rect.width));
-                const seekTo = (audio.duration || 0) * pct;
-                audio.currentTime = seekTo;
-                if (audio.paused && currentlyPlayingSong) {
-                  handlePlaySong(currentlyPlayingSong);
-                }
-              }}
-              role="slider"
-              aria-valuemin={0}
-              aria-valuemax={playbackDuration}
-              aria-valuenow={playbackProgress}
-              tabIndex={0}
-              onKeyDown={(e) => {
-                const audio = audioRef.current;
-                if (!audio) return;
-                if (e.key === "ArrowRight") {
-                  audio.currentTime = Math.min(
-                    audio.duration || 0,
-                    audio.currentTime + 5,
-                  );
-                } else if (e.key === "ArrowLeft") {
-                  audio.currentTime = Math.max(0, audio.currentTime - 5);
-                }
-              }}
-            >
-              <div
-                className="bottom-player-progress-fill"
-                style={{
-                  width:
-                    playbackDuration > 0
-                      ? `${(playbackProgress / playbackDuration) * 100}%`
-                      : "0%",
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* TOAST SYSTEM CONTAINER */}
       <div className="toast-container">
         {toasts.map((toast) => (
@@ -1197,6 +1181,15 @@ const PlaylistsPage: React.FC = () => {
           </div>
         ))}
       </div>
+
+      {/* SONG DETAILS MODAL */}
+      <SongDetailsModal
+        song={modalSong}
+        onClose={() => setModalSong(null)}
+        playlists={displayPlaylists}
+        onAddToPlaylist={(song, playlist) => handleAddSong(song, playlist)}
+        onCreatePlaylist={handleCreatePlaylistInline}
+      />
     </div>
   );
 };
