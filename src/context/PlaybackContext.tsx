@@ -6,7 +6,13 @@ import React, {
   useEffect,
   useRef,
 } from "react";
-import { Song } from "../services/api";
+import {
+  getPlaybackQueue,
+  PlaybackQueuePayload,
+  savePlaybackQueue,
+  Song,
+} from "../services/api";
+import { useAuth } from "./AuthContext";
 import { useAudioStreaming } from "../hooks/useAudioStreaming";
 
 interface PlaybackNotification {
@@ -39,23 +45,43 @@ interface PlaybackContextValue {
 
 const PlaybackContext = createContext<PlaybackContextValue | null>(null);
 
-export const PlaybackProvider: React.FC<React.PropsWithChildren<{}>> = ({
+export const PlaybackProvider: React.FC<React.PropsWithChildren> = ({
   children,
 }) => {
+  const { authToken, isLoading: authLoading } = useAuth();
   const [queue, setQueue] = useState<Song[]>([]);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
+  const [queueLoaded, setQueueLoaded] = useState(false);
   const [notification, setNotification] = useState<PlaybackNotification | null>(
     null,
   );
   const notifyIdRef = useRef(0);
+  const restoredPositionRef = useRef(0);
+  const saveInFlightRef = useRef(false);
+  const queueSnapshotRef = useRef<PlaybackQueuePayload>({
+    version: 1,
+    songIds: [],
+    currentSongId: null,
+    positionSeconds: 0,
+    updatedAt: "",
+  });
 
-  const notify = useCallback((type: PlaybackNotification["type"], message: string) => {
-    notifyIdRef.current += 1;
-    setNotification({ id: notifyIdRef.current, type, message });
-  }, []);
+  const notify = useCallback(
+    (type: PlaybackNotification["type"], message: string) => {
+      notifyIdRef.current += 1;
+      setNotification({ id: notifyIdRef.current, type, message });
+    },
+    [],
+  );
 
-  const handleError = useCallback((msg: string) => notify("error", msg), [notify]);
-  const handleInfo = useCallback((msg: string) => notify("info", msg), [notify]);
+  const handleError = useCallback(
+    (msg: string) => notify("error", msg),
+    [notify],
+  );
+  const handleInfo = useCallback(
+    (msg: string) => notify("info", msg),
+    [notify],
+  );
 
   const {
     audioRef,
@@ -64,6 +90,69 @@ export const PlaybackProvider: React.FC<React.PropsWithChildren<{}>> = ({
     handlePlaySong,
     handleAudioEnded,
   } = useAudioStreaming(handleError, handleInfo);
+
+  useEffect(() => {
+    if (authLoading) return;
+
+    if (!authToken) {
+      setQueue([]);
+      setCurrentSong(null);
+      restoredPositionRef.current = 0;
+      setQueueLoaded(false);
+      return;
+    }
+
+    let isActive = true;
+    setQueueLoaded(false);
+
+    getPlaybackQueue()
+      .then((snapshot) => {
+        if (!isActive) return;
+
+        if (
+          !snapshot ||
+          !Array.isArray(snapshot.songIds) ||
+          !Array.isArray(snapshot.songs)
+        ) {
+          setQueue([]);
+          setCurrentSong(null);
+          restoredPositionRef.current = 0;
+          return;
+        }
+
+        const songsById = new Map(
+          snapshot.songs.map((song) => [song.id, song]),
+        );
+        setQueue(
+          snapshot.songIds
+            .map((songId) => songsById.get(songId))
+            .filter((song): song is Song => song !== undefined),
+        );
+        setCurrentSong(
+          snapshot.currentSongId
+            ? (songsById.get(snapshot.currentSongId) ?? null)
+            : null,
+        );
+        restoredPositionRef.current = Number.isFinite(snapshot.positionSeconds)
+          ? Math.max(0, snapshot.positionSeconds)
+          : 0;
+      })
+      .catch((error) => {
+        console.error("Failed to load playback queue:", error);
+        if (isActive) {
+          setQueue([]);
+          setCurrentSong(null);
+          restoredPositionRef.current = 0;
+        }
+      })
+      .finally(() => {
+        if (isActive) setQueueLoaded(true);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [authToken, authLoading]);
 
   const enqueue = useCallback((song: Song) => {
     setQueue((prev) => [...prev, song]);
@@ -89,6 +178,7 @@ export const PlaybackProvider: React.FC<React.PropsWithChildren<{}>> = ({
 
   const playSong = useCallback(
     (song: Song) => {
+      if (currentSong?.id !== song.id) restoredPositionRef.current = 0;
       setCurrentSong(song);
       setQueue((prev) => {
         if (currentlyPlayingSongId !== song.id && prev.length === 0) {
@@ -98,12 +188,14 @@ export const PlaybackProvider: React.FC<React.PropsWithChildren<{}>> = ({
       });
       handlePlaySong(song);
     },
-    [currentlyPlayingSongId, handlePlaySong],
+    [currentlyPlayingSongId, currentSong?.id, handlePlaySong],
   );
 
   // Auto-advance to the next queued song when the current one finishes.
   const handleEnded = useCallback(() => {
-    const currentIndex = queue.findIndex((q) => q.id === currentlyPlayingSongId);
+    const currentIndex = queue.findIndex(
+      (q) => q.id === currentlyPlayingSongId,
+    );
     const newQueue = [...queue];
     if (currentIndex !== -1) newQueue.splice(currentIndex, 1);
     const next = newQueue.length > 0 ? newQueue[0] : undefined;
@@ -111,17 +203,76 @@ export const PlaybackProvider: React.FC<React.PropsWithChildren<{}>> = ({
     if (currentIndex !== -1) removeAt(currentIndex);
 
     if (next) {
+      restoredPositionRef.current = 0;
       setCurrentSong(next);
       handlePlaySong(next);
       notify("info", `Now playing: ${next.title}`);
     } else {
       handleAudioEnded();
     }
-  }, [queue, currentlyPlayingSongId, removeAt, handlePlaySong, handleAudioEnded, notify]);
+  }, [
+    queue,
+    currentlyPlayingSongId,
+    removeAt,
+    handlePlaySong,
+    handleAudioEnded,
+    notify,
+  ]);
 
   // Progress tracking for the global player bar.
   const [playbackProgress, setPlaybackProgress] = useState(0);
   const [playbackDuration, setPlaybackDuration] = useState(0);
+
+  const activePosition =
+    currentSong && currentlyPlayingSongId === currentSong.id
+      ? (audioRef.current?.currentTime ?? playbackProgress)
+      : restoredPositionRef.current;
+  queueSnapshotRef.current = {
+    version: 1,
+    songIds: queue.map((song) => song.id),
+    currentSongId: currentSong?.id ?? currentlyPlayingSongId,
+    positionSeconds: Number.isFinite(activePosition)
+      ? Math.max(0, activePosition)
+      : 0,
+    updatedAt: "",
+  };
+
+  const persistQueue = useCallback(async () => {
+    if (!authToken || !queueLoaded || saveInFlightRef.current) return;
+
+    saveInFlightRef.current = true;
+    try {
+      await savePlaybackQueue({
+        ...queueSnapshotRef.current,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Failed to save playback queue:", error);
+    } finally {
+      saveInFlightRef.current = false;
+    }
+  }, [authToken, queueLoaded]);
+
+  useEffect(() => {
+    if (authLoading || !authToken || !queueLoaded) return;
+
+    const timeoutId = window.setTimeout(() => void persistQueue(), 20_000);
+    return () => window.clearTimeout(timeoutId);
+  }, [
+    authToken,
+    authLoading,
+    queueLoaded,
+    queue,
+    currentSong?.id,
+    persistQueue,
+  ]);
+
+  useEffect(() => {
+    if (authLoading || !authToken || !queueLoaded) return;
+
+    const intervalId = window.setInterval(() => void persistQueue(), 20_000);
+    return () => window.clearInterval(intervalId);
+  }, [authToken, authLoading, queueLoaded, persistQueue]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -206,7 +357,8 @@ export const PlaybackProvider: React.FC<React.PropsWithChildren<{}>> = ({
 
 export const usePlayback = (): PlaybackContextValue => {
   const ctx = useContext(PlaybackContext);
-  if (!ctx) throw new Error("usePlayback must be used within a PlaybackProvider");
+  if (!ctx)
+    throw new Error("usePlayback must be used within a PlaybackProvider");
   return ctx;
 };
 
