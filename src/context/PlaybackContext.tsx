@@ -25,6 +25,7 @@ interface PlaybackContextValue {
   // Queue
   queue: Song[];
   enqueue: (song: Song) => void;
+  playQueuedSong: (index: number) => void;
   removeAt: (index: number) => void;
   move: (from: number, to: number) => void;
   clearQueue: () => void;
@@ -191,6 +192,19 @@ export const PlaybackProvider: React.FC<React.PropsWithChildren> = ({
     [currentlyPlayingSongId, currentSong?.id, handlePlaySong],
   );
 
+  const playQueuedSong = useCallback(
+    (index: number) => {
+      const song = queue[index];
+      if (!song) return;
+
+      if (currentSong?.id !== song.id) restoredPositionRef.current = 0;
+      setQueue((prev) => prev.filter((_, queueIndex) => queueIndex !== index));
+      setCurrentSong(song);
+      handlePlaySong(song);
+    },
+    [queue, currentSong?.id, handlePlaySong],
+  );
+
   // Auto-advance to the next queued song when the current one finishes.
   const handleEnded = useCallback(() => {
     const currentIndex = queue.findIndex(
@@ -330,6 +344,7 @@ export const PlaybackProvider: React.FC<React.PropsWithChildren> = ({
       value={{
         queue,
         enqueue,
+        playQueuedSong,
         removeAt,
         move,
         clearQueue,

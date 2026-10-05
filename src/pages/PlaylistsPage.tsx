@@ -95,14 +95,16 @@ const PlaylistsPage: React.FC = () => {
   };
 
   // Global playback state (shared across the whole app so playback survives navigation)
-  const { currentSong, playSong, queue, enqueue, removeAt, move } =
+  const { currentSong, queue, enqueue, playQueuedSong, removeAt, move } =
     usePlayback();
   const currentlyPlayingSongId = currentSong?.id ?? null;
 
   // Patch in the live Liked Songs contents from context so likes/unlikes made
   // anywhere (search modal, bottom bar, this page) show up here without a refetch.
   const displayPlaylists = playlists.map((p) =>
-    p.is_liked_songs && likedPlaylist ? { ...p, songs: likedPlaylist.songs } : p,
+    p.is_liked_songs && likedPlaylist
+      ? { ...p, songs: likedPlaylist.songs }
+      : p,
   );
 
   const selectedPlaylist = displayPlaylists.find(
@@ -266,7 +268,9 @@ const PlaylistsPage: React.FC = () => {
   };
 
   // Create a playlist from the song details modal's "Add to playlist" menu
-  const handleCreatePlaylistInline = async (name: string): Promise<Playlist> => {
+  const handleCreatePlaylistInline = async (
+    name: string,
+  ): Promise<Playlist> => {
     const created = await createPlaylist(name);
     setPlaylists((prev) => [created, ...prev]);
     addToast(`Playlist "${created.name}" created successfully!`, "success");
@@ -602,9 +606,7 @@ const PlaylistsPage: React.FC = () => {
                                   <Heart
                                     size={15}
                                     fill={
-                                      isLiked(song.id)
-                                        ? "currentColor"
-                                        : "none"
+                                      isLiked(song.id) ? "currentColor" : "none"
                                     }
                                   />
                                 </button>
@@ -675,14 +677,12 @@ const PlaylistsPage: React.FC = () => {
                                 // avoid triggering when clicking control buttons
                                 const target = e.target as HTMLElement;
                                 if (target.closest(".queue-controls")) return;
-                                move(qi, 0);
-                                playSong(qSong);
+                                playQueuedSong(qi);
                                 addToast(`Now playing: ${qSong.title}`, "info");
                               }}
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") {
-                                  move(qi, 0);
-                                  playSong(qSong);
+                                  playQueuedSong(qi);
                                   addToast(
                                     `Now playing: ${qSong.title}`,
                                     "info",
@@ -815,13 +815,9 @@ const PlaylistsPage: React.FC = () => {
                                       <div className="discovery-actions">
                                         <button
                                           className={`btn-like-song${isLiked(song.id) ? " liked" : ""}`}
-                                          onClick={() =>
-                                            handleToggleLike(song)
-                                          }
+                                          onClick={() => handleToggleLike(song)}
                                           title={
-                                            isLiked(song.id)
-                                              ? "Unlike"
-                                              : "Like"
+                                            isLiked(song.id) ? "Unlike" : "Like"
                                           }
                                           aria-label={
                                             isLiked(song.id)
@@ -929,13 +925,9 @@ const PlaylistsPage: React.FC = () => {
                                       <div className="discovery-actions">
                                         <button
                                           className={`btn-like-song${isLiked(song.id) ? " liked" : ""}`}
-                                          onClick={() =>
-                                            handleToggleLike(song)
-                                          }
+                                          onClick={() => handleToggleLike(song)}
                                           title={
-                                            isLiked(song.id)
-                                              ? "Unlike"
-                                              : "Like"
+                                            isLiked(song.id) ? "Unlike" : "Like"
                                           }
                                           aria-label={
                                             isLiked(song.id)
