@@ -83,6 +83,18 @@ export interface Playlist {
   is_liked_songs?: boolean;
 }
 
+export interface PlaybackQueuePayload {
+  version: number;
+  songIds: string[];
+  currentSongId: string | null;
+  positionSeconds: number;
+  updatedAt: string;
+}
+
+export interface PlaybackQueueResponse extends PlaybackQueuePayload {
+  songs: Song[];
+}
+
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 /**
@@ -272,6 +284,51 @@ export const saveUserPreferences = async (
     console.error("Error saving preferences:", error);
     throw error instanceof Error ? error : new Error("An error occurred");
   }
+};
+
+/** Save the current user's playback queue snapshot. */
+export const savePlaybackQueue = async (
+  payload: PlaybackQueuePayload,
+): Promise<void> => {
+  const authToken = localStorage.getItem("authToken");
+  if (!authToken) throw new Error("No authentication token found");
+
+  const response = await fetch(`${API_BASE_URL}/queue`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${authToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || data.detail || "Failed to save playback queue");
+  }
+};
+
+/** Load the current user's queue snapshot and hydrated song details. */
+export const getPlaybackQueue = async (): Promise<PlaybackQueueResponse | null> => {
+  const authToken = localStorage.getItem("authToken");
+  if (!authToken) throw new Error("No authentication token found");
+
+  const response = await fetch(`${API_BASE_URL}/queue`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${authToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || data.detail || "Failed to load playback queue");
+  }
+
+  const data: unknown = await response.json();
+  if (!data || Array.isArray(data)) return null;
+  return data as PlaybackQueueResponse;
 };
 
 // ─── Streaming ───────────────────────────────────────────────────────────────
