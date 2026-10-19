@@ -1,0 +1,94 @@
+.upload-song-page {
+  min-height: calc(100vh - 120px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  background: linear-gradient(135deg, #0d1117 0%, #181f2a 100%);
+}
+
+.upload-song-container {
+  width: 100%;
+  max-width: 720px;
+}
+
+.upload-song-card {
+  background: rgba(17, 24, 39, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 32px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.28);
+}
+
+.upload-song-header {
+  margin-bottom: 24px;
+}
+
+.upload-song-header h1 {
+  color: #f8f9fa;
+  margin-bottom: 8px;
+  font-size: clamp(2rem, 4vw, 2.5rem);
+}
+
+.upload-song-header p {
+  color: #cbd5e1;
+  margin: 0;
+}
+
+.upload-form {
+  color: #e2e8f0;
+}
+
+.upload-form .form-label {
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+.upload-form .form-control,
+.upload-form .form-select {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  color: #f8fafc;
+}
+
+.upload-form .form-control::file-selector-button {
+  background: #1d4ed8;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-right: 12px;
+}
+
+.upload-form .form-control:focus,
+.upload-form .form-select:focus {
+  background: rgba(15, 23, 42, 0.9);
+  color: #f8fafc;
+  border-color: rgba(96, 165, 250, 0.9);
+  box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
+}
+
+.upload-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.upload-actions .btn {
+  min-width: 160px;
+}
+
+@media (max-width: 576px) {
+  .upload-song-card {
+    padding: 22px 18px;
+  }
+
+  .upload-actions {
+    flex-direction: column-reverse;
+  }
+
+  .upload-actions .btn {
+    width: 100%;
+  }
+}

@@ -45,6 +45,7 @@ interface Genre {
 interface Artist {
   id: string;
   name: string;
+  genre_id: string;
   image_url?: string;
   created_at?: string;
   updated_at?: string;
@@ -252,6 +253,42 @@ export const getArtists = async (): Promise<Artist[]> => {
 };
 
 /**
+ * Upload a new song with cover art using the fixed backend endpoint.
+ */
+export const uploadSong = async (formData: FormData): Promise<unknown> => {
+  try {
+    const authToken = localStorage.getItem("authToken");
+    if (!authToken) {
+      throw new Error("No authentication token found");
+    }
+
+    const response = await fetch(`${API_BASE_URL}/songs/upload`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: formData,
+    });
+
+    const contentType = response.headers.get("content-type") || "";
+    const parsed = contentType.includes("application/json")
+      ? await response.json()
+      : await response.text();
+
+    if (!response.ok) {
+      throw new Error(
+        parsed?.message || parsed?.detail || "Song upload failed",
+      );
+    }
+
+    return parsed;
+  } catch (error) {
+    console.error("Error uploading song:", error);
+    throw error instanceof Error ? error : new Error("An error occurred");
+  }
+};
+
+/**
  * Save user preferences (genres and/or artists)
  */
 export const saveUserPreferences = async (
@@ -304,39 +341,46 @@ export const savePlaybackQueue = async (
 
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
-    throw new Error(data.message || data.detail || "Failed to save playback queue");
+    throw new Error(
+      data.message || data.detail || "Failed to save playback queue",
+    );
   }
 };
 
 /** Load the current user's queue snapshot and hydrated song details. */
-export const getPlaybackQueue = async (): Promise<PlaybackQueueResponse | null> => {
-  const authToken = localStorage.getItem("authToken");
-  if (!authToken) throw new Error("No authentication token found");
+export const getPlaybackQueue =
+  async (): Promise<PlaybackQueueResponse | null> => {
+    const authToken = localStorage.getItem("authToken");
+    if (!authToken) throw new Error("No authentication token found");
 
-  const response = await fetch(`${API_BASE_URL}/queue`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${authToken}`,
-    },
-  });
+    const response = await fetch(`${API_BASE_URL}/queue`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+    });
 
-  if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    throw new Error(data.message || data.detail || "Failed to load playback queue");
-  }
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(
+        data.message || data.detail || "Failed to load playback queue",
+      );
+    }
 
-  const data: unknown = await response.json();
-  if (!data || Array.isArray(data)) return null;
-  return data as PlaybackQueueResponse;
-};
+    const data: unknown = await response.json();
+    if (!data || Array.isArray(data)) return null;
+    return data as PlaybackQueueResponse;
+  };
 
 // ─── Streaming ───────────────────────────────────────────────────────────────
 
 /**
  * Stream a song and return a blob URL that can be used as an audio source
  */
-export const streamSongToBlobUrl = async (songId: string): Promise<string | undefined> => {
+export const streamSongToBlobUrl = async (
+  songId: string,
+): Promise<string | undefined> => {
   try {
     const authToken = localStorage.getItem("authToken");
     const response = await fetch(`${API_BASE_URL}/songs/${songId}/stream`, {

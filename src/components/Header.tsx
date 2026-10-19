@@ -29,9 +29,14 @@ export default function Header() {
             <Nav.Link onClick={() => navigate("/")}>Home</Nav.Link>
             <Nav.Link onClick={() => navigate("/features")}>Features</Nav.Link>
             {isAuthenticated && (
-              <Nav.Link onClick={() => navigate("/playlists")}>
-                Playlists
-              </Nav.Link>
+              <>
+                <Nav.Link onClick={() => navigate("/playlists")}>
+                  Playlists
+                </Nav.Link>
+                <Nav.Link onClick={() => navigate("/upload-song")}>
+                  Upload Song
+                </Nav.Link>
+              </>
             )}
             <Nav.Link href="#about">About us</Nav.Link>
             <Nav.Link href="#store">Music Store</Nav.Link>

@@ -16,6 +16,7 @@ import Signup from "./pages/singup";
 import Signin from "./pages/signin";
 import Preferences from "./pages/preferences";
 import PlaylistsPage from "./pages/PlaylistsPage";
+import UploadSongPage from "./pages/UploadSongPage";
 import { useAuth } from "./context/AuthContext";
 import {
   searchSongs,
@@ -277,6 +278,14 @@ function App() {
           element={
             <ProtectedRoute>
               <PlaylistsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/upload-song"
+          element={
+            <ProtectedRoute>
+              <UploadSongPage />
             </ProtectedRoute>
           }
         />
