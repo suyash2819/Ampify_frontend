@@ -252,7 +252,6 @@ function Home() {
               </>
             )}
             <HomeSearch />
-            <HomeSearch />
           </div>
         </section>
       ) : (
