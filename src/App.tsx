@@ -251,7 +251,7 @@ function Home() {
                 </p>
               </>
             )}
-
+            <HomeSearch />
             <HomeSearch />
           </div>
         </section>

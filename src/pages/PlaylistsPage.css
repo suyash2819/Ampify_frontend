@@ -298,6 +298,14 @@
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
+.recommended-playlist-art {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #d7edff;
+  background: linear-gradient(135deg, #6d28d9, #0891b2);
+}
+
 .playlist-list-item .item-details {
   flex: 1;
   min-width: 0;
@@ -1315,4 +1323,3 @@ textarea.modal-input {
   color: #00c6ff;
   text-decoration: underline;
 }
-

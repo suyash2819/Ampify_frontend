@@ -39,6 +39,9 @@ interface Toast {
   type: "success" | "error" | "warning" | "info";
 }
 
+const RECOMMENDED_PLAYLIST_ID = "__recommended_playlist__";
+const RECOMMENDED_PLAYLIST_NAME = "Recommended Playlist";
+
 const PlaylistsPage: React.FC = () => {
   // Playlist states
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -107,9 +110,18 @@ const PlaylistsPage: React.FC = () => {
       : p,
   );
 
-  const selectedPlaylist = displayPlaylists.find(
-    (p) => p.id === selectedPlaylistId,
-  );
+  const isRecommendedPlaylist = selectedPlaylistId === RECOMMENDED_PLAYLIST_ID;
+  const selectedPlaylist =
+    displayPlaylists.find((p) => p.id === selectedPlaylistId) ??
+    (isRecommendedPlaylist
+      ? {
+          id: RECOMMENDED_PLAYLIST_ID,
+          name: RECOMMENDED_PLAYLIST_NAME,
+          description: "Picked for you based on your listening history.",
+          songs: suggestions,
+          image_url: suggestions[0]?.image_url,
+        }
+      : undefined);
 
   // Responsive listener
   useEffect(() => {
@@ -345,6 +357,9 @@ const PlaylistsPage: React.FC = () => {
   const filteredPlaylists = displayPlaylists.filter((p) =>
     p.name.toLowerCase().includes(playlistFilterQuery.toLowerCase()),
   );
+  const showRecommendedPlaylist = RECOMMENDED_PLAYLIST_NAME.toLowerCase().includes(
+    playlistFilterQuery.toLowerCase(),
+  );
 
   // Render Loader
   if (loading) {
@@ -408,6 +423,37 @@ const PlaylistsPage: React.FC = () => {
               </div>
 
               <div className="playlists-list-scroll">
+                {showRecommendedPlaylist && (
+                  <div
+                    className={`playlist-list-item recommended-playlist-item ${isRecommendedPlaylist ? "active" : ""}`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => {
+                      setSelectedPlaylistId(RECOMMENDED_PLAYLIST_ID);
+                      if (isMobile) setMobileView("detail");
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setSelectedPlaylistId(RECOMMENDED_PLAYLIST_ID);
+                        if (isMobile) setMobileView("detail");
+                      }
+                    }}
+                  >
+                    <div className="mini-art recommended-playlist-art">
+                      <Sparkles size={22} />
+                    </div>
+                    <div className="item-details">
+                      <h4 className="item-name">
+                        {RECOMMENDED_PLAYLIST_NAME}
+                      </h4>
+                      <p className="item-count">
+                        {suggestions.length}{" "}
+                        {suggestions.length === 1 ? "song" : "songs"}
+                      </p>
+                    </div>
+                  </div>
+                )}
                 {filteredPlaylists.length > 0 ? (
                   filteredPlaylists.map((playlist) => (
                     <div
@@ -443,7 +489,7 @@ const PlaylistsPage: React.FC = () => {
                       </div>
                     </div>
                   ))
-                ) : (
+                ) : !showRecommendedPlaylist ? (
                   <div className="empty-state-box py-4">
                     <Music size={28} />
                     <p className="empty-state-title">No playlists found</p>
@@ -456,7 +502,7 @@ const PlaylistsPage: React.FC = () => {
                       </button>
                     )}
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
           )}
@@ -496,9 +542,11 @@ const PlaylistsPage: React.FC = () => {
                       </div>
                       <div className="detail-info">
                         <span className="badge-playlist">
-                          {selectedPlaylist.is_liked_songs
-                            ? "❤️ Liked Songs"
-                            : "Playlist"}
+                          {isRecommendedPlaylist
+                            ? "✨ Recommended"
+                            : selectedPlaylist.is_liked_songs
+                              ? "❤️ Liked Songs"
+                              : "Playlist"}
                         </span>
                         <h2 className="playlist-title-header">
                           {selectedPlaylist.name}
@@ -509,7 +557,11 @@ const PlaylistsPage: React.FC = () => {
                           </p>
                         )}
                         <div className="detail-stats">
-                          <span>Created by you</span>
+                          <span>
+                            {isRecommendedPlaylist
+                              ? "Based on your listening history"
+                              : "Created by you"}
+                          </span>
                           <span className="bullet-separator">•</span>
                           <span>
                             {selectedPlaylist.songs.length}{" "}
@@ -519,7 +571,8 @@ const PlaylistsPage: React.FC = () => {
                           </span>
                         </div>
                         {/* Hide Edit/Delete for Liked Songs */}
-                        {!selectedPlaylist.is_liked_songs && (
+                        {!selectedPlaylist.is_liked_songs &&
+                          !isRecommendedPlaylist && (
                           <div className="action-buttons-group">
                             <button
                               className="btn-premium-outline"
@@ -623,7 +676,8 @@ const PlaylistsPage: React.FC = () => {
                                   Add to queue
                                 </button>
 
-                                {!selectedPlaylist.is_liked_songs && (
+                                {!selectedPlaylist.is_liked_songs &&
+                                  !isRecommendedPlaylist && (
                                   <button
                                     className="btn-remove-song"
                                     onClick={() =>
@@ -642,14 +696,18 @@ const PlaylistsPage: React.FC = () => {
                           <div className="empty-state-box py-5">
                             <Music size={40} />
                             <p className="empty-state-title">
-                              {selectedPlaylist.is_liked_songs
-                                ? "No liked songs yet"
-                                : "This playlist is empty"}
+                              {isRecommendedPlaylist
+                                ? "No recommendations yet"
+                                : selectedPlaylist.is_liked_songs
+                                  ? "No liked songs yet"
+                                  : "This playlist is empty"}
                             </p>
                             <p className="empty-state-subtitle">
-                              {selectedPlaylist.is_liked_songs
-                                ? "Heart a song to save it here."
-                                : "Search for songs below to add them to your playlist."}
+                              {isRecommendedPlaylist
+                                ? "Recommendations based on your listening history will appear here."
+                                : selectedPlaylist.is_liked_songs
+                                  ? "Heart a song to save it here."
+                                  : "Search for songs below to add them to your playlist."}
                             </p>
                           </div>
                         )}
@@ -743,7 +801,8 @@ const PlaylistsPage: React.FC = () => {
                   </div>
 
                   {/* Add Music Search and Suggestions — hide for Liked Songs */}
-                  {!selectedPlaylist.is_liked_songs && (
+                  {!selectedPlaylist.is_liked_songs &&
+                    !isRecommendedPlaylist && (
                     <div className="music-discovery-container">
                       <h3 className="discovery-section-title">
                         Add songs to this playlist
@@ -751,7 +810,7 @@ const PlaylistsPage: React.FC = () => {
 
                       <div className="row">
                         {/* Search for songs */}
-                        <div className="col-lg-7 mb-4 mb-lg-0">
+                        <div className="col-12 mb-4">
                           <div className="pe-lg-4">
                             <h4 className="fs-6 fw-bold mb-3 text-white-50">
                               Search for tracks
@@ -872,109 +931,6 @@ const PlaylistsPage: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Suggested Songs */}
-                        <div className="col-lg-5">
-                          <div>
-                            <h4 className="fs-6 fw-bold mb-3 text-white-50 d-flex align-items-center gap-2">
-                              <Sparkles size={16} className="text-info" />
-                              Recommended for you
-                            </h4>
-
-                            <div className="suggestions-list">
-                              {suggestions.length > 0 ? (
-                                suggestions.map((song) => {
-                                  const isAdded = selectedPlaylist.songs.some(
-                                    (s) => s.id === song.id,
-                                  );
-                                  return (
-                                    <div
-                                      key={song.id}
-                                      className="discovery-song-item"
-                                    >
-                                      <img
-                                        src={song.image_url}
-                                        alt={song.title}
-                                        className="clickable"
-                                        role="button"
-                                        tabIndex={0}
-                                        onClick={() => setModalSong(song)}
-                                        onKeyDown={(e) => {
-                                          if (e.key === "Enter")
-                                            setModalSong(song);
-                                        }}
-                                        aria-label={`View ${song.title} details`}
-                                        style={{ cursor: "pointer" }}
-                                      />
-                                      <div className="discovery-song-details">
-                                        <span
-                                          className="discovery-song-title clickable-title"
-                                          role="button"
-                                          tabIndex={0}
-                                          onClick={() => setModalSong(song)}
-                                          onKeyDown={(e) => {
-                                            if (e.key === "Enter")
-                                              setModalSong(song);
-                                          }}
-                                        >
-                                          {song.title}
-                                        </span>
-                                        <span className="discovery-song-artist">
-                                          {song.artist}
-                                        </span>
-                                      </div>
-                                      <div className="discovery-actions">
-                                        <button
-                                          className={`btn-like-song${isLiked(song.id) ? " liked" : ""}`}
-                                          onClick={() => handleToggleLike(song)}
-                                          title={
-                                            isLiked(song.id) ? "Unlike" : "Like"
-                                          }
-                                          aria-label={
-                                            isLiked(song.id)
-                                              ? `Unlike ${song.title}`
-                                              : `Like ${song.title}`
-                                          }
-                                        >
-                                          <Heart
-                                            size={15}
-                                            fill={
-                                              isLiked(song.id)
-                                                ? "currentColor"
-                                                : "none"
-                                            }
-                                          />
-                                        </button>
-                                        <button
-                                          className="btn-add-song"
-                                          onClick={() => handleAddSong(song)}
-                                          disabled={isAdded}
-                                        >
-                                          {isAdded ? "Added" : "Add"}
-                                        </button>
-                                        <button
-                                          className="btn-add-queue ms-2"
-                                          onClick={() => {
-                                            enqueue(song);
-                                            addToast(
-                                              `Queued "${song.title}"`,
-                                              "info",
-                                            );
-                                          }}
-                                        >
-                                          Add to queue
-                                        </button>
-                                      </div>
-                                    </div>
-                                  );
-                                })
-                              ) : (
-                                <p className="text-white-50 fs-7 py-2">
-                                  No recommendations available
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
                       </div>
                     </div>
                   )}
