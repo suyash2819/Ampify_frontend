@@ -931,6 +931,116 @@ const PlaylistsPage: React.FC = () => {
                           </div>
                         </div>
 
+                        {/* Suggested Songs (disabled; retained for future use)
+                        <div className="col-lg-5">
+                          <div>
+                            <h4 className="fs-6 fw-bold mb-3 text-white-50 d-flex align-items-center gap-2">
+                              <Sparkles size={16} className="text-info" />
+                              Recommended for you
+                            </h4>
+
+                            <div className="suggestions-list">
+                              {suggestions.length > 0 ? (
+                                suggestions.map((song) => {
+                                  const isAdded = selectedPlaylist.songs.some(
+                                    (item) => item.id === song.id,
+                                  );
+                                  return (
+                                    <div
+                                      key={song.id}
+                                      className="discovery-song-item"
+                                    >
+                                      <img
+                                        src={song.image_url}
+                                        alt={song.title}
+                                        className="clickable"
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={() => setModalSong(song)}
+                                        onKeyDown={(event) => {
+                                          if (event.key === "Enter") {
+                                            setModalSong(song);
+                                          }
+                                        }}
+                                        aria-label={`View ${song.title} details`}
+                                        style={{ cursor: "pointer" }}
+                                      />
+                                      <div className="discovery-song-details">
+                                        <span
+                                          className="discovery-song-title clickable-title"
+                                          role="button"
+                                          tabIndex={0}
+                                          onClick={() => setModalSong(song)}
+                                          onKeyDown={(event) => {
+                                            if (event.key === "Enter") {
+                                              setModalSong(song);
+                                            }
+                                          }}
+                                        >
+                                          {song.title}
+                                        </span>
+                                        <span className="discovery-song-artist">
+                                          {song.artist}
+                                        </span>
+                                      </div>
+                                      <div className="discovery-actions">
+                                        <button
+                                          className={`btn-like-song${isLiked(song.id) ? " liked" : ""}`}
+                                          onClick={() =>
+                                            handleToggleLike(song)
+                                          }
+                                          title={
+                                            isLiked(song.id)
+                                              ? "Unlike"
+                                              : "Like"
+                                          }
+                                          aria-label={
+                                            isLiked(song.id)
+                                              ? `Unlike ${song.title}`
+                                              : `Like ${song.title}`
+                                          }
+                                        >
+                                          <Heart
+                                            size={15}
+                                            fill={
+                                              isLiked(song.id)
+                                                ? "currentColor"
+                                                : "none"
+                                            }
+                                          />
+                                        </button>
+                                        <button
+                                          className="btn-add-song"
+                                          onClick={() => handleAddSong(song)}
+                                          disabled={isAdded}
+                                        >
+                                          {isAdded ? "Added" : "Add"}
+                                        </button>
+                                        <button
+                                          className="btn-add-queue ms-2"
+                                          onClick={() => {
+                                            enqueue(song);
+                                            addToast(
+                                              `Queued "${song.title}"`,
+                                              "info",
+                                            );
+                                          }}
+                                        >
+                                          Add to queue
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })
+                              ) : (
+                                <p className="text-white-50 fs-7 py-2">
+                                  No recommendations available
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        */}
                       </div>
                     </div>
                   )}
