@@ -96,6 +96,24 @@ export interface PlaybackQueueResponse extends PlaybackQueuePayload {
   songs: Song[];
 }
 
+export type PlayEventEndReason = "finished" | "skipped" | "closed" | "error";
+
+export interface PlayEvent {
+  event_id: string;
+  type: "play_ended";
+  track_id: string;
+  started_at: string;
+  ms_played: number;
+  track_duration_ms: number;
+  end_reason: PlayEventEndReason;
+  context?: { type: string; id: string };
+  source?: "user" | "agent";
+  session_id: string;
+  device: string;
+  queue_instance_id?: string;
+  app_version?: string;
+}
+
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 /**
@@ -785,5 +803,31 @@ export const getSuggestedSongs = async (): Promise<Song[]> => {
   } catch (error) {
     console.error("Error fetching suggestions:", error);
     throw error instanceof Error ? error : new Error("An error occurred");
+  }
+};
+
+/** Send a batch of playback events to the backend for recommendation history. */
+export const sendPlayEvents = async (
+  events: PlayEvent[],
+  keepalive = false,
+): Promise<void> => {
+  if (events.length === 0) return;
+
+  const authToken = localStorage.getItem("authToken");
+  const response = await fetch(`${API_BASE_URL}/events`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${authToken}`,
+    },
+    body: JSON.stringify(events),
+    keepalive,
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(
+      data.message || data.detail || "Failed to send playback events",
+    );
   }
 };

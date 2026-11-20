@@ -11,6 +11,35 @@ interface ArtistOption {
   genre_id: string;
 }
 
+type SongMood =
+  | "happy"
+  | "upbeat"
+  | "energetic"
+  | "romantic"
+  | "chill"
+  | "calm"
+  | "nostalgic"
+  | "sad"
+  | "melancholic"
+  | "dark"
+  | "angry"
+  | "focus";
+
+const SONG_MOODS: SongMood[] = [
+  "happy",
+  "upbeat",
+  "energetic",
+  "romantic",
+  "chill",
+  "calm",
+  "nostalgic",
+  "sad",
+  "melancholic",
+  "dark",
+  "angry",
+  "focus",
+];
+
 const UploadSongPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -18,6 +47,7 @@ const UploadSongPage = () => {
   const [artists, setArtists] = useState<ArtistOption[]>([]);
   const [songTitle, setSongTitle] = useState("");
   const [selectedArtistId, setSelectedArtistId] = useState("");
+  const [mood, setMood] = useState<SongMood | "">("");
   const [songFile, setSongFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [loadingArtists, setLoadingArtists] = useState(true);
@@ -67,6 +97,11 @@ const UploadSongPage = () => {
       return;
     }
 
+    if (!mood) {
+      setError("Please choose a mood for the song.");
+      return;
+    }
+
     if (!songFile) {
       setError("Please select an mp3 file for the song.");
       return;
@@ -105,6 +140,7 @@ const UploadSongPage = () => {
       formData.append("title", songTitle.trim());
       formData.append("artist_id", selectedArtistId);
       formData.append("genre_id", selectedArtist.genre_id);
+      formData.append("mood", mood);
       formData.append("song_file", songFile, songFile.name);
       formData.append("cover_image", coverFile, coverFile.name);
 
@@ -113,6 +149,7 @@ const UploadSongPage = () => {
       setSuccessMessage("Song uploaded successfully.");
       setSongTitle("");
       setSelectedArtistId(artists[0]?.id || "");
+      setMood("");
       setSongFile(null);
       setCoverFile(null);
 
@@ -185,6 +222,24 @@ const UploadSongPage = () => {
                     </option>
                   ))
                 )}
+              </Form.Select>
+            </Form.Group>
+
+            <Form.Group className="mb-3" controlId="songMood">
+              <Form.Label>Mood</Form.Label>
+              <Form.Select
+                required
+                value={mood}
+                onChange={(event) =>
+                  setMood(event.target.value as SongMood | "")
+                }
+              >
+                <option value="">Choose a mood</option>
+                {SONG_MOODS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
               </Form.Select>
             </Form.Group>
 

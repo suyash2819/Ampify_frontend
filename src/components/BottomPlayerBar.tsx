@@ -25,6 +25,7 @@ const BottomPlayerBar: React.FC = () => {
     playbackProgress,
     playbackDuration,
     playSong,
+    skipCurrentSong,
     seekTo,
     audioRef,
     notification,
@@ -119,6 +120,15 @@ const BottomPlayerBar: React.FC = () => {
               aria-label={isPlaying ? "Pause song" : "Play song"}
             >
               {isPlaying ? <Pause size={18} /> : <Play size={18} />}
+            </button>
+
+            <button
+              className="bottom-player-action"
+              onClick={skipCurrentSong}
+              aria-label="Skip current song"
+              title="Skip current song"
+            >
+              <SkipForward size={18} />
             </button>
 
             <button

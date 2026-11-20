@@ -9,6 +9,7 @@ interface UseAudioStreamingReturn {
   isPlaying: boolean;
   handlePlaySong: (song: Song) => Promise<void>;
   handleAudioEnded: () => void;
+  stopPlayback: () => void;
   cleanupStream: () => void;
 }
 
@@ -312,6 +313,12 @@ export const useAudioStreaming = (
     setIsPlaying(false);
   }, []);
 
+  const stopPlayback = useCallback(() => {
+    cleanupStream();
+    setCurrentlyPlayingSongId(null);
+    setIsPlaying(false);
+  }, [cleanupStream]);
+
   // Expose playback state and controls to the consuming component.
   return {
     audioRef,
@@ -319,6 +326,7 @@ export const useAudioStreaming = (
     isPlaying,
     handlePlaySong,
     handleAudioEnded,
+    stopPlayback,
     cleanupStream,
   };
 };
